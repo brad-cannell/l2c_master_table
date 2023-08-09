@@ -2,15 +2,17 @@ project:
   type: website
   render:
     - index.qmd
-    - about.qmd
+    - demographics.qmd
 
 website:
   title: "Link2Care Master Descriptive Tables"
   navbar:
+    search: true
     left:
-      - href: index.qmd
-        text: Home
-      - about.qmd
+      - text: "Home"
+        file: index.qmd
+      - text: "Demographics"
+        file: demographics.qmd
 
 format:
   html:
