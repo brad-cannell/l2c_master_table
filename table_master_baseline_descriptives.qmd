@@ -26,7 +26,7 @@ library(codebookr)
 
 # Import data
 
-Import `combined_participant_data.rds`. This dataset is created in `data_survey_21_merge.Rmd`.
+Import `combined_participant_data.rds`. This dataset is created in `link2care_public/data_survey_21_merge.Rmd`. Additionally, this code assumes that this file is being run from the SharePoint `General` folder.
 
 ```{r}
 l2c_survey <- readr::read_rds("../Participant Data/R Data/combined_participant_data.rds")
@@ -59,74 +59,174 @@ I will eventually need to move this to one of the other files.
 ## Calculated variables
 
 ```{r}
-# l2c_survey_baseline <- 
-l2c_survey_baseline %>%
+# For checking data
+table(l2c_survey_baseline$ml_race)
+```
+
+```{r}
+l2c_survey_baseline <- l2c_survey_baseline %>%
   mutate(
-    
-    race_3cat = case_when(
-      is.na(race)  ~ NA_character_,
-      race == "AA" ~ "Black or African American",
-      race == "W"  ~ "White",
-      TRUE         ~ "Other"
+    ml_race_3cat = case_when(
+      is.na(ml_race)  ~ NA_integer_,
+      ml_race == "AA" ~ 1, # "Black or African American"
+      ml_race == "W"  ~ 2, # "White"
+      TRUE            ~ 3, # "Other race or multiple races"
     ),
-    race_3cat_f = factor(
-      race_3cat,
-      c("Black or African American", "White", "Other")
-    ),
-    hispanic_f = factor(hispanic, c("N", "Y"), c("Non-Hispanic", "Hispanic"))
-  )
+    ml_race_eth_4cat = case_when(
+      is.na(ml_hispanic) ~ NA_integer_,
+      ml_hispanic == "Y" ~ 3, # "Hispanic, any race",
+      ml_race == "AA"    ~ 1, # "Black, non-Hispanic",
+      ml_race == "W"     ~ 2, # "White, non-Hispanic",
+      TRUE               ~ 4, # "Other race or multiple races, non-Hispanic"
+    )
+  ) |> 
+  relocate(ml_race_3cat, .after = ml_race) |> 
+  relocate(ml_race_eth_4cat, .after = ml_race_3cat)
 ```
 
 ## Creating factors
 
 ```{r}
-# Eventually, move this function to its own R script.
-
-# Function to coerce columns into factors and then position the factor version
-# of the column directly behind the non-factor version of the column in the 
-# data frame.
-# Internally, it uses a combination of factor() and dplyr::relocate(). That's
-# where the factor name comes from.
-fact_reloc <- function(.data, .col, .levels, .labels) {
-  # Create a `_f` version of the column name. The glue syntax used in
-  # `mutate()` doesn't work in `relocate()`.
-  nm <- rlang::as_name(enquo(.col))
-  nm_f <- paste(nm, "f", sep = "_")
-  
-  .data |> 
-    dplyr::mutate(
-      "{{.col}}_f" := factor({{.col}}, .levels, .labels)
-    ) |> 
-    dplyr::relocate(!! nm_f, .after = {{.col}})
-}
-
-# For testing
-# l2c_survey_baseline |> 
-#   fact_reloc(group, 1:3, c("UCM", "UCM+SP", "L2C"))
+source("R/fact_reloc.R")
 ```
-
 
 ```{r}
-l2c_survey_baseline |> 
-  mutate(
-    group_f = factor(group, 1:3, c("UCM", "UCM+SP", "L2C")),
-    ml_gender_f = factor(ml_gender, c("M", "F", "Other"), c("Male", "Female", "Other"))
+# For checking data
+# table(l2c_survey_baseline$ml_hispanic)
+```
+
+```{r}
+l2c_survey_baseline <- l2c_survey_baseline |> 
+  fact_reloc(group, 1:3, c("UCM", "UCM+SP", "L2C")) |> 
+  fact_reloc(ml_gender, c("M", "F", "Other"), c("Male", "Female", "Other")) |> 
+  fact_reloc(ml_hispanic, c("N", "Y"), c("Non-Hispanic", "Hispanic")) |> 
+  fact_reloc(
+    ml_race, 
+    c("A", "AA", "AI/AN", "More Than One", "NH/PI", "O/U", "W"),
+    c(
+      "Asian", "Black or African American", "American Indian or Alaskan Native",
+      "More Than One Race", "Native Hawaiian or Pacific Islander",
+      "Other or Unknown", "White"
+    )
   ) |> 
-  # Put factor versions of variable right after the non-factor version
-  relocate(
-    c(group_f, ml_gender_f), 
-    .after = c(group, ml_gender)
+  fact_reloc(
+    ml_race_3cat, 
+    1:3, 
+    c("Black or African American", "White", "Other race or multiple races")
+  ) |> 
+  fact_reloc(
+    ml_race_eth_4cat,
+    1:4,
+    c(
+      "Black, non-Hispanic", "White, non-Hispanic", "Hispanic, any race",
+      "Other race or multiple races, non-Hispanic"
+    )
   )
 ```
 
-master_log_screened_in <- master_log_screened_in %>% 
-  mutate( 
-    group = case_when(
-      group == "UCM"    ~ 1,
-      group == "UCM+SP" ~ 2,
-      group == "L2C"    ~ 3
-    )
-  )
+
+# Analyisis
+
+## Group sizes
+
+```{r}
+n_overall <- l2c_survey_baseline |> 
+  filter(visit == 1) |> 
+  nrow()
+```
+
+```{r}
+n_per_group <- l2c_survey_baseline |>
+  filter(visit == 1) |> 
+  filter(!is.na(group_f)) |> 
+  count(group_f) %>% 
+  pull(n) |> 
+  set_names(levels(l2c_survey_baseline$group_f))
+```
+
+## Prepare to calculate summary statistics
+
+Creating separate R scripts for each of these.
+
+```{r}
+# Overall - Continuous columns
+source("R/n_mean_ci.R")
+source("R/n_median_ci.R")
+source("R/cont_stats.R")
+
+# Overall - Categorical columns
+source("R/n_percent_ci.R")
+
+# By group - Continuous columns
+source("R/n_mean_ci_grouped.R")
+source("R/n_median_ci_grouped.R")
+source("R/cont_stats_grouped.R")
+
+# By group - Categorical columns
+source("R/n_percent_ci_grouped.R")
+```
+
+## Create lists of columns to analyze
+
+Right now, I'm thinking one table persection (e.g., demographics, etc.)
+
+```{r}
+demographics_cont_cols <- c("ml_age")
+```
+
+```{r}
+demographics_cat_cols <- c("ml_gender_f", "ml_race_f", "ml_race_eth_4cat_f", "ml_hispanic_f")
+```
+
+## Create a data frame that contains our summary statistics
+
+Later, turn these into functions?
+
+```{r}
+demographics_stats_list <- demographics_cont_cols  |> 
+  rlang::set_names(demographics_cont_cols) |> 
+  purrr::map(~ cont_stats(l2c_survey_baseline, !! rlang::sym(.x), 1))
+```
+
+```{r}
+demographics_stats_list <- c(
+  demographics_stats_list,
+  demographics_cat_cols |>
+    rlang::set_names(demographics_cat_cols) |> 
+    purrr::map(~ n_percent_ci(l2c_survey_baseline, !! rlang::sym(.x), 1))
+)
+```
+
+## Bind together the continuous and categorical summary stats
+
+Later, turn this into a function?
+
+```{r}
+demographics_table <- purrr::map_dfr(
+  # This is where we can set the order of the rows
+  .x = c("ml_age", "ml_gender_f", "ml_race_f", "ml_race_eth_4cat_f", "ml_hispanic_f"),
+  .f = ~ dplyr::bind_rows(demographics_stats_list[[.x]])
+)
+
+# Reorder the columns so that `cat` comes after `var`
+demographics_table <- demographics_table |> 
+  dplyr::select(var, cat, everything())
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Import list of analysis variables
