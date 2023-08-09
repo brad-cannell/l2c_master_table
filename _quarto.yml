@@ -1,8 +1,11 @@
 project:
   type: website
+  render:
+    - index.qmd
+    - about.qmd
 
 website:
-  title: "test"
+  title: "Link2Care Master Descriptive Tables"
   navbar:
     left:
       - href: index.qmd
@@ -14,6 +17,4 @@ format:
     theme: cosmo
     css: styles.css
     toc: true
-
-
 
