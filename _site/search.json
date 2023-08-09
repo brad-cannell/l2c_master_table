@@ -9,8 +9,8 @@
   {
     "objectID": "index.html",
     "href": "index.html",
-    "title": "test",
+    "title": "Overview",
     "section": "",
-    "text": "This is a Quarto website.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites.\n\n1 + 1\n\n[1] 2"
+    "text": "This website contains multiple web-based tables of baseline descriptive statistics for (nearly) every survey data variable collected as part of the Link2Care project. For more information about the Link2Care project, please see the primary public repository at: https://github.com/brad-cannell/link2care_public.\n\n\nThe data for these tables is currently housed at UTHealth-Houston on the Link2Care SharePoint site. Contact Brad Cannell at Michael.B.Cannell@uth.tmc.edu if you have questions about accessing the data.\n\nAdministrative Information\n\n\n\nLast updated:\n2023-08-09\nThe date the tables on this website were last updated.\n\n\nSource data:\ncombined_participant_data.rds\nThe name of the dataset used to create the tables on this website.\n\n\nSource data path:\n../Participant Data/R Data/\nThe path to the source data.\n\n\nSource data size:\n16.4 Mb\nThe size of the source data.\n\n\nSource data row count:\n1,614\nThis includes all rows in the source data. Not only rows for data collected at baseline.\n\n\nSource data column count:\n1,299\nThe number of columns/variables currently contained in the source data.\n\n\nCodebook:\nlink\nLink to download the most current codebook for the source data."
   }
 ]
