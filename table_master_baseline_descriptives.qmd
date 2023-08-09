@@ -1,0 +1,976 @@
+---
+title: "Master Baseline Descriptives Table"
+format: gfm
+---
+
+# Overview
+
+This file generates a table containing baseline descriptive statistics for every survey data variable collected.
+
+
+# Load packages
+
+```{r message=FALSE}
+library(dplyr)
+library(haven)
+library(stringr)
+library(tidyr)
+library(meantables)
+library(freqtables)
+library(purrr)
+library(flextable)
+library(officer)
+library(codebookr)
+```
+
+
+# Import data
+
+Import `combined_participant_data.rds`. This dataset is created in `data_survey_21_merge.Rmd`.
+
+```{r}
+l2c_survey <- readr::read_rds("../Participant Data/R Data/combined_participant_data.rds")
+```
+
+```{r}
+dim(l2c_survey) # 1614 1299
+```
+
+## Keep vist 1 and 2 only
+
+This is a table of baseline statistics. We will only need visit 1, and in a handful of cases, visit 2.
+
+```{r}
+l2c_survey_baseline <- filter(l2c_survey, visit == 1 | visit == 2)
+```
+
+```{r}
+dim(l2c_survey_baseline) # 849 1299
+```
+
+```{r}
+rm(l2c_survey)
+```
+
+# Data cleaning
+
+I will eventually need to move this to one of the other files.
+
+## Calculated variables
+
+```{r}
+# l2c_survey_baseline <- 
+l2c_survey_baseline %>%
+  mutate(
+    
+    race_3cat = case_when(
+      is.na(race)  ~ NA_character_,
+      race == "AA" ~ "Black or African American",
+      race == "W"  ~ "White",
+      TRUE         ~ "Other"
+    ),
+    race_3cat_f = factor(
+      race_3cat,
+      c("Black or African American", "White", "Other")
+    ),
+    hispanic_f = factor(hispanic, c("N", "Y"), c("Non-Hispanic", "Hispanic"))
+  )
+```
+
+## Creating factors
+
+```{r}
+# Eventually, move this function to its own R script.
+
+# Function to coerce columns into factors and then position the factor version
+# of the column directly behind the non-factor version of the column in the 
+# data frame.
+# Internally, it uses a combination of factor() and dplyr::relocate(). That's
+# where the factor name comes from.
+fact_reloc <- function(.data, .col, .levels, .labels) {
+  # Create a `_f` version of the column name. The glue syntax used in
+  # `mutate()` doesn't work in `relocate()`.
+  nm <- rlang::as_name(enquo(.col))
+  nm_f <- paste(nm, "f", sep = "_")
+  
+  .data |> 
+    dplyr::mutate(
+      "{{.col}}_f" := factor({{.col}}, .levels, .labels)
+    ) |> 
+    dplyr::relocate(!! nm_f, .after = {{.col}})
+}
+
+# For testing
+# l2c_survey_baseline |> 
+#   fact_reloc(group, 1:3, c("UCM", "UCM+SP", "L2C"))
+```
+
+
+```{r}
+l2c_survey_baseline |> 
+  mutate(
+    group_f = factor(group, 1:3, c("UCM", "UCM+SP", "L2C")),
+    ml_gender_f = factor(ml_gender, c("M", "F", "Other"), c("Male", "Female", "Other"))
+  ) |> 
+  # Put factor versions of variable right after the non-factor version
+  relocate(
+    c(group_f, ml_gender_f), 
+    .after = c(group, ml_gender)
+  )
+```
+
+master_log_screened_in <- master_log_screened_in %>% 
+  mutate( 
+    group = case_when(
+      group == "UCM"    ~ 1,
+      group == "UCM+SP" ~ 2,
+      group == "L2C"    ~ 3
+    )
+  )
+
+
+# Import list of analysis variables
+
+Normally, I wouldn't do it this way, but there are just so many variables that it's easier to keep track of them all and keep them in order using a spreadsheet.
+
+```{r}
+analysis_vars    <- readxl::read_excel("codebooks/master_baseline_descriptive_table_vars.xlsx")
+continuous_vars  <- analysis_vars |> filter(cat == 0) |> pull(var)
+categorical_vars <- analysis_vars |> filter(cat == 1) |> pull(var)
+```
+
+See if any of the variable names need to change
+
+```{r}
+names_l2c_survey <- names(l2c_survey_baseline)
+names_analysis_vars <- analysis_vars$var
+setdiff(names_analysis_vars, names_l2c_survey)
+```
+
+
+# Make table from codebook
+
+What would it look like to make the table from the codebook?
+
+1. Add an attribute that tells R I want to use the variable in the Master table?
+
+2. Decide which stats to use based on the column type?
+
+```{r}
+# Take a small sample of the data to experiment with.
+set.seed(123)
+ids <- unique(l2c_survey_baseline$id)
+ids <- sample(ids, 100)
+l2c_sample <- l2c_survey_baseline |> 
+  filter(id %in% ids) |> 
+  arrange(id, visit)
+dim(l2c_sample) # 193 1299
+```
+
+Let's actually make it REALLY small for now. 
+
+```{r}
+l2c_sample <- l2c_sample |> 
+  select(id:ml_age)
+dim(l2c_sample) # 193   9
+```
+
+Start with the end in mind. What do I want to end up with?
+
+```{r}
+master_table_analysis_list <- tibble(
+  # col = column to include in the master table
+  col = c("ml_gender", "ml_age"),
+  # baseline_visit = Which visit are we using for baseline?
+  # For some it is 1 for others it is 2.
+  baseline_vist = c(1, 1),
+  # cat = Is it a categorical variable?
+  cat = c(1, 0)
+) |> 
+  print()
+```
+
+How do we use this table to do the analysis? We can just follow the basic process laid out in `table_baseline_descriptives.Rmd`.
+
+Add an attribute that tells R I want to use the variable in the Master table
+
+```{r}
+l2c_sample <- l2c_sample |>
+  
+  cb_add_col_attributes(
+    id, 
+    description = "Participant ID",
+    source = "Master Log",
+    col_type = "Categorical",
+    master_table = FALSE, # For testing
+    baseline_visit = 1
+  ) |>
+  
+  cb_add_col_attributes(
+    ml_gender, 
+    description = "Master log gender",
+    source = "Master Log",
+    col_type = "Categorical",
+    master_table = TRUE,
+    baseline_visit = 1
+  ) |> 
+  
+  cb_add_col_attributes(
+    ml_age,
+    description = "Master log age",
+    source = "Master Log",
+    col_type = "Numeric",
+    master_table = TRUE,
+    baseline_visit = 1
+  )
+```
+
+Can I create a data frame of columns to use in the master table, along with their column type, from this data frame?
+
+```{r}
+attributes(l2c_sample$ml_gender)
+```
+
+```{r}
+column_attributes <- names(attributes(l2c_sample$ml_gender))
+has_master_table_attribute <- "master_table" %in% column_attributes
+master_table_attribute <- attr(l2c_sample$ml_gender, "master_table")
+```
+
+Loop over every variable, read its attributes and use that information to create `master_table_analysis_vars`
+
+```{r}
+create_master_table_analysis_list <- function(col, idx) {
+  # Get a vector of all of the attributes for the current column in the loop.
+  column_attributes <- names(attributes(col))
+  
+  # Does the current column have the master_table attribute with a value of TRUE?
+  # If not, don't include it in the table.
+  has_master_table_attribute <- "master_table" %in% column_attributes
+  master_table_attribute_true <- attr(col, "master_table")
+
+  # Create df row
+  if (has_master_table_attribute && master_table_attribute_true) {
+    # Get the column name
+    col_name <- deparse(substitute(col))
+    
+    # baseline_visit = Which visit are we using for baseline?
+    # For some it is 1 for others it is 2.
+    baseline_visit <- attr(col, "baseline_visit")
+    
+    # categorical = Is it a categorical variable?
+    # First, see if the column type is character or factor
+    # Second, see if there is a Categorical col_type attribute
+    # If not, then set categorical to 0.
+    col_class <- tolower(class(col))
+    col_type  <- tolower(attr(col, "col_type"))
+    categorical <- 0
+    if ("character" %in% col_class || "factor" %in% col_class) categorical <- 1
+    if ("categorical" %in% col_type) categorical <- 1
+    
+    out <- data.frame(
+      col_name,
+      baseline_visit,
+      categorical
+    )
+    
+    # Return df row
+    out
+  }
+}
+
+# For testing
+create_master_table_analysis_list(l2c_sample$ml_gender)
+```
+
+```{r}
+# Tweaking a little bit to work with purrr.
+# Specifically, we have to use imap to grab the column name.
+create_master_table_analysis_list <- function(col, idx) {
+  # Get a vector of all of the attributes for the current column in the loop.
+  column_attributes <- names(attributes(col))
+  
+  # Does the current column have the master_table attribute with a value of TRUE?
+  # If not, don't include it in the table.
+  has_master_table_attribute <- "master_table" %in% column_attributes
+  master_table_attribute_true <- attr(col, "master_table")
+
+  # Create df row
+  if (has_master_table_attribute && master_table_attribute_true) {
+    # Get the column name
+    col_name <- idx
+    
+    # baseline_visit = Which visit are we using for baseline?
+    # For some it is 1 for others it is 2.
+    baseline_visit <- attr(col, "baseline_visit")
+    
+    # categorical = Is it a categorical variable?
+    # First, see if the column type is character or factor
+    # Second, see if there is a Categorical col_type attribute
+    # If not, then set categorical to 0.
+    col_class <- tolower(class(col))
+    col_type  <- tolower(attr(col, "col_type"))
+    categorical <- 0
+    if ("character" %in% col_class || "factor" %in% col_class) categorical <- 1
+    if ("categorical" %in% col_type) categorical <- 1
+    
+    out <- data.frame(
+      col_name,
+      baseline_visit,
+      categorical
+    )
+    
+    # Return df row
+    out
+  }
+}
+
+# For testing
+create_master_table_analysis_list(l2c_sample$ml_gender, "ml_gender")
+```
+
+```{r}
+master_table_analysis_list <- imap_dfr(
+  l2c_sample,
+  create_master_table_analysis_list
+)
+
+master_table_analysis_list
+```
+
+This works. Now, we should just be able to apply it to every column of interest in the l2c data frame. Then, we can use the rest of the code in `table_baseline_descriptives.Rmd` to create a Word table.
+
+Add the needed attributes to the data frame in `data_survey_23_codebook.Rmd`. 
+
+
+# ⭐️ Complete process walkthrough 
+
+Clean up the global environment first.
+
+```{r}
+rm(
+  analysis_vars, continuous_vars, categorical_vars, names_l2c_survey, 
+  names_analysis_vars, ids, l2c_sample, column_attributes, has_master_table_attribute, 
+  master_table_attribute, master_table_analysis_list
+)
+```
+
+
+## convert_label_to_cb_add_col_attributes.R
+
+We will start by using convert_label_to_cb_add_col_attributes.R to convert some code that used used for adding attributes to the cleaned survey data in data_survey_23_codebook.Rmd. Specifically, we will convert all the code that uses the homemade `label()` function to code that uses `codebookr`s `cb_add_col_attributes()` function. We do this because we want to be able to also add the `master_table` and `baseline_visits` attributes to the columns. This will make maintaining code, and master table, easier.
+
+Actually, is that last statement true? If we choose the table variables that way, then won't we have to rerun the codebook code every time we want to update the master table? That could take a long time.
+
+Maybe a better solution is to just add the attributes to the variables in this qmd document. This is kind of going back to my original method of storing the variables for Table 1 in a spreadsheet, but it has some advantages. Because we are creating that table with a code file instead of a spreadsheet, we can track changes/versions and we can add a lot more comments. 
+
+Pseudocode for moving forward:
+
+1. Select the columns of interest
+2. Add attributes that identify the baseline visit and the stats we want to calculate for each column
+3. Using those attributes, make a table that contains all of the columns and other information needed for the master descriptive table
+4. Write function(s) to calculate overall stats for continuous variables
+5. Write function(s) to calculate overall stats for categorical variables 
+6. Write function(s) to calculate stats for continuous variables by L2C group
+7. Write function(s) to calculate stats for categorical variables by L2C group
+8. Write functions to select the appropriate stat function for each column of interest
+9. Loop all columns through the appropriate functions
+10. Create a the table of descriptive stats
+11. Figure out the best way to style and disseminate the table (may need it's own repo)
+
+## Select the columns of interest
+
+I'm not sure if the better move is to subset the `l2c_survey` data into a data frame that only contains the columns we want in the master descriptive table or if it is to add the `master_table` attribute to the columns of interest in the full `l2c_survey` data frame. Right now, I'm leaning towards the subsetting method. It seems cleaner and like it will run faster. And I can't think of any downside at the moment. 
+
+I started by running the code from the following sections at the top of this file:
+1. Import data
+2. Keep vist 1 and 2 only
+
+```{r}
+l2c_survey_baseline_master_descriptives_table <- l2c_survey_baseline |> 
+  select(
+    # Administrative variables
+    id, visit, group,
+    
+    # Demographic variables
+    ml_gender, ml_race, ml_hispanic, ml_age,
+    
+    # TCU scale
+    tcu_se_v_2_total
+  )
+```
+
+```{r}
+dim(l2c_survey_baseline_master_descriptives_table)
+```
+
+## Add attributes to columns
+
+Add attributes to the columns that will be used for creating the master table analysis list. 
+1. `baseline_visits`: Which visit was the baseline visit for this particular measure.
+2. `col_type`: The `create_master_table_analysis_list()` function add this attribute to the master table analysis list. It will eventually be used to determine which stats to calculate.
+
+We could go back and add these attributes to the columns in `data_survey_23_codebook.Rmd` at the same time we are adding other column attributes (e.g., descriptions). However, as discussed above, I don't think I want to do it that way right now. Why? 
+
+1. Right now, I'm in a hurry to get a table 1 draft in Michael's hands. Changing the code in `data_survey_23_codebook.Rmd` takes extra time and isn't strictly necessary. 
+
+2. If we add attributes to the columns in `data_survey_23_codebook.Rmd`, then we will have to add the `master_table = TRUE` attribute to each of the columns (because we won't just be adding attributes to the subset of columns we already know we want). Then, we will likely have to rerun the codebook code every time we want to update the master table. That code takes a long time to run.
+
+I'm also trying to figure out if I want to create a `cb_add_col_attributes()` code block for each column or not? The alternative is probably adding each attribute one at a time to all (most) columns separately, but en masse. For example, one code chunk that adds `master_table = TRUE` to all columns at once and a separate code chunk that adds `baseline_visit = 1` (with some exceptions) to all columns at once.
+
+Pros:
+1. More fine-grained control over the attributes.
+
+Cons:
+1. It just makes for a really long code chunk.
+
+For now, let's create a `cb_add_col_attributes()` code block for each column. If it starts to feel inefficient later, we can always go back and do something different.
+
+```{r}
+# Get help with writing the code for adding attributes - doesn't need to be run every time this file runs.
+#| eval: false
+
+# I may also may want to result to be sent to an external file for copy and 
+# paste instead of printing to the screen immediately below this code chunk.
+# It becomes a lot to scroll through.
+
+# I may want the results to be displayed in alphabetical order. That would
+# make it easier to find the column I'm interested in later. 
+
+# Set master_table = TRUE for every column. I may be unnecessary, but it may also be useful later.
+
+add_attributes_code <- map_chr(
+  names(l2c_survey_baseline_master_descriptives_table),
+  ~ paste0('
+    cb_add_col_attributes( \n    ',
+      "  ", .x, ', \n    ',
+      "  ", 'master_table = TRUE', ', \n    ', 
+      "  ", 'baseline_visit = 1
+    ) |> 
+  ')
+)
+file.create("add_attributes_code.R")
+writeLines(add_attributes_code, "add_attributes_code.R")
+
+# I may want to turn this into a function in codebookr.
+```
+
+Currently, I'm manually changing `baseline_visit` to 2 for `tcu_se_v_2_total`. This doesn't seem ideal.
+
+```{r}
+l2c_survey_baseline_master_descriptives_table <- l2c_survey_baseline_master_descriptives_table |>
+  
+  cb_add_col_attributes( 
+    id, 
+    master_table = FALSE, 
+    baseline_visit = 1
+  ) |> 
+
+
+  cb_add_col_attributes( 
+    visit, 
+    master_table = FALSE, 
+    baseline_visit = 1
+  ) |> 
+
+
+  cb_add_col_attributes( 
+    group, 
+    master_table = FALSE, 
+    baseline_visit = 1
+  ) |> 
+
+
+  cb_add_col_attributes( 
+    ml_gender, 
+    master_table = TRUE, 
+    baseline_visit = 1
+  ) |> 
+
+
+  cb_add_col_attributes( 
+    ml_race, 
+    master_table = TRUE, 
+    baseline_visit = 1
+  ) |> 
+
+
+  cb_add_col_attributes( 
+    ml_hispanic, 
+    master_table = TRUE, 
+    baseline_visit = 1
+  ) |> 
+
+
+  cb_add_col_attributes( 
+    ml_age, 
+    master_table = TRUE, 
+    baseline_visit = 1
+  ) |> 
+
+
+  cb_add_col_attributes( 
+    tcu_se_v_2_total, 
+    master_table = TRUE, 
+    baseline_visit = 2 
+  )
+```
+
+## Create master table analysis list
+
+```{r}
+master_table_analysis_list <- imap_dfr(
+  l2c_survey_baseline_master_descriptives_table,
+  create_master_table_analysis_list
+)
+
+master_table_analysis_list
+```
+
+## Write function(s) to calculate overall stats for continuous variables
+
+For now, we'll get the mean with confidence interval and median with confidence interval.
+
+Useful website:
+<https://stats.stackexchange.com/questions/21103/confidence-interval-for-median>
+
+### Mean and CI
+
+```{r}
+n_mean_ci <- function(.data, .x, .digits) {
+  .data |> 
+    mean_table({{.x}}) |> 
+    mean_format("mean (lcl - ucl)", digits = .digits) |> 
+    select(var = response_var, n, formatted_stats) |> 
+    mutate(var = paste0(var, ", mean (95% CI)"))
+}
+
+# For testing
+l2c_survey_baseline_master_descriptives_table |>
+  # Baseline only
+  filter(visit == 1) |>
+  n_mean_ci(ml_age, 1)
+```
+
+### Median and CI
+
+```{r}
+n_median_ci <- function(.data, .x, .digits) {
+  .data |>  
+    summarise(
+      var = !!quo_name(enquo(.x)),
+      n   = sum(!is.na({{.x}})),
+      n_miss = sum(is.na({{.x}})),
+      median = median({{.x}}, na.rm = TRUE),
+      lcl = sort({{.x}})[qbinom(.025, length({{.x}}), 0.5)],
+      ucl = sort({{.x}})[qbinom(.975, length({{.x}}), 0.5)]
+    ) |> 
+    mean_format("median (lcl - ucl)", digits = .digits) |> 
+    select(var, n, formatted_stats) |> 
+    mutate(var = paste0(var, ", median (95% CI)"))
+}
+
+# For testing
+l2c_survey_baseline_master_descriptives_table |>
+  # Baseline only
+  filter(visit == 1) |>
+  n_median_ci(ml_age, 1)
+```
+
+### Row bind mean and median
+
+```{r}
+cont_stats <- function(.data, .x, .digits) {
+  n_mean_ci <- .data |> 
+    n_mean_ci({{.x}}, .digits)
+  
+  n_median_ci <- .data |> 
+    n_median_ci({{.x}}, .digits)
+  
+  results <- bind_rows(
+    n_mean_ci,
+    n_median_ci
+  )
+  
+  results
+}
+
+# For testing
+l2c_survey_baseline_master_descriptives_table |>
+  # Baseline only
+  filter(visit == 1) |>
+  cont_stats(ml_age, 1)
+```
+
+## Write function(s) to calculate overall stats for categorical variables 
+
+```{r}
+n_percent_ci <- function(.data, .x, .digits) {
+  name <- enquo(.x)
+  .data |> 
+    filter(!is.na({{.x}})) |> 
+    freq_table({{.x}}) |> 
+    freq_format(recipe = "percent (lcl - ucl)", digits = .digits) |> 
+    select(var, cat, n, formatted_stats) |> 
+    mutate(var = paste0(var, ", percent (95% CI)"))
+}
+
+# For testing
+# When we loop through this function below, the column names will be passed into
+# .x as a character string.
+l2c_survey_baseline_master_descriptives_table |>
+  # Baseline only
+  filter(visit == 1) |>
+  n_percent_ci(!! sym("ml_gender"), 1)
+```
+
+## Write function(s) to calculate stats for continuous variables by L2C group
+
+### Mean and CI
+
+```{r}
+n_mean_ci_grouped <- function(.data, .x, .digits) {
+  .data |> 
+    mean_table({{.x}}) |> 
+    mean_format("mean (lcl - ucl)", digits = .digits) |> 
+    select(var = response_var, group_cat, n, formatted_stats) |> 
+    mutate(var = paste0(var, ", mean (95% CI)")) |> 
+    # Display by group_cat
+    pivot_wider(
+      names_from = "group_cat",
+      values_from = c("n", "formatted_stats")
+    ) |>
+    # Reorder columns
+    select(var, n_1, formatted_stats_1, n_2, formatted_stats_2, n_3, formatted_stats_3)
+}
+
+# For testing
+# When we loop through this function below, the column names will be passed into
+# .x as a character string.
+l2c_survey_baseline_master_descriptives_table |>
+  # Baseline only
+  filter(visit == 1) |>
+  filter(!is.na(group)) |> 
+  group_by(group) |> 
+  n_mean_ci_grouped(!! sym("ml_age"), 1)
+```
+
+### Median and CI
+
+```{r}
+n_median_ci_grouped <- function(.data, .x, .digits) {
+  .data |>  
+    summarise(
+      var = !!quo_name(enquo(.x)),
+      n   = sum(!is.na({{.x}})),
+      n_miss = sum(is.na({{.x}})),
+      median = median({{.x}}, na.rm = TRUE),
+      lcl = sort({{.x}})[qbinom(.025, length({{.x}}), 0.5)],
+      ucl = sort({{.x}})[qbinom(.975, length({{.x}}), 0.5)]
+    ) |> 
+    mean_format("median (lcl - ucl)", digits = .digits) |> 
+    select(var, group_cat = 1, n, formatted_stats) |>
+    mutate(var = paste0(var, ", median (95% CI)")) |> 
+    # Display by group
+    pivot_wider(
+      names_from = "group_cat",
+      values_from = c("n", "formatted_stats")
+    ) |> 
+    # Reorder columns
+    select(var, n_1, formatted_stats_1, n_2, formatted_stats_2, n_3, formatted_stats_3)
+}
+
+# For testing
+# When we loop through this function below, the column names will be passed into
+# .x as a character string.
+l2c_survey_baseline_master_descriptives_table |>
+  # Baseline only
+  filter(visit == 1) |>
+  filter(!is.na(group)) |> 
+  group_by(group) |> 
+  n_median_ci_grouped(!! sym("ml_age"), 1)
+```
+
+### Row bind mean and median
+
+```{r}
+cont_stats_grouped <- function(.data, .x, .digits) {
+  n_mean_ci_grouped <- .data |> 
+    n_mean_ci_grouped({{.x}}, .digits)
+  
+  n_median_ci_grouped <- .data |> 
+    n_median_ci_grouped({{.x}}, .digits)
+  
+  results <- bind_rows(
+    n_mean_ci_grouped,
+    n_median_ci_grouped
+  )
+  
+  results
+}
+
+# For testing
+# When we loop through this function below, the column names will be passed into
+# .x as a character string.
+l2c_survey_baseline_master_descriptives_table |>
+  # Baseline only
+  filter(visit == 1) |>
+  filter(!is.na(group)) |> 
+  group_by(group) |> 
+  cont_stats_grouped(!! sym("ml_age"), 1)
+```
+
+## Write function(s) to calculate stats for categorical variables by L2C group
+
+```{r}
+# Because of the way freq_table() works, it's better to pass the grouping
+# variable directly to freq_table() inside this function than it is to 
+# pass the function a grouped data frame.
+# I really need to make some edits to freq_table()
+n_percent_ci_grouped <- function(.data, .x, .group_by, .digits) {
+  name <- enquo(.x)
+  .data |> 
+    filter(!is.na({{.x}})) |> 
+    freq_table({{.group_by}}, {{.x}}) |> 
+    freq_format(recipe = "percent_row (lcl_row - ucl_row)", digits = .digits) |> 
+    select(var = col_var, group_cat = row_cat, cat = col_cat, n, formatted_stats) |> 
+    mutate(var = paste0(var, ", column percent (95% CI)")) |> 
+    # Display by group_cat
+    pivot_wider(
+      names_from = "group_cat",
+      values_from = c("n", "formatted_stats")
+    ) |>
+    # Reorder columns
+    select(var, cat, n_1, formatted_stats_1, n_2, formatted_stats_2, n_3, formatted_stats_3)
+}
+
+# For testing
+# When we loop through this function below, the column names will be passed into
+# .x as a character string.
+l2c_survey_baseline_master_descriptives_table |>
+  # Baseline only
+  filter(visit == 1) |>
+  filter(!is.na(group)) |> 
+  n_percent_ci_grouped(!! sym("ml_gender"), group, 1)
+```
+
+## Write functions to select the appropriate stat function for each column of interest
+
+These functions are intended to work with the `master_table_analysis_list`.
+
+```{r}
+calc_overall_stat <- function(.data, .col, .baseline, .cat, .digits) {
+  if (.cat == 0) {
+    overall_stats <- .data |>
+      # Baseline only
+      filter(visit == .baseline) |>
+      cont_stats(!! sym(.col), .digits)
+  
+  } else if (.cat == 1) {
+    overall_stats <- .data |>
+      # Baseline only
+      filter(visit == .baseline) |>
+      n_percent_ci(!! sym(.col), .digits)
+  
+  } else {
+    stop("calc_overall_stat is expecting the value of cat to be 1 or 2, but got something else")
+  }
+  
+  # Return stats
+  overall_stats
+}
+
+# For testing
+# When we loop through this function below, the column names will be passed into
+# .x as a character string.
+calc_overall_stat(
+  .data = l2c_survey_baseline_master_descriptives_table,
+  .col = "ml_age",
+  .baseline = 1,
+  .cat = 0,
+  .digits = 1
+)
+```
+
+```{r}
+calc_grouped_stat <- function(.data, .col, .group, .baseline, .cat, .digits) {
+  if (.cat == 0) {
+    grouped_stats <- .data |>
+      # Baseline only
+      filter(visit == .baseline) |>
+      filter(!is.na(!! sym(.group))) |> 
+      group_by(!! sym(.group)) |> 
+      cont_stats_grouped(!! sym(.col), .digits)
+
+  } else if (.cat == 1) {
+    grouped_stats <- .data |>
+      # Baseline only
+      filter(visit == .baseline) |>
+      filter(!is.na(!! sym(.group))) |> 
+      n_percent_ci_grouped(!! sym(.col), !! sym(.group), .digits)
+  
+  } else {
+    stop("calc_grouped_stat is expecting the value of cat to be 1 or 2, but got something else")
+  }
+  
+  # Return stats
+  grouped_stats
+}
+
+# For testing
+# When we loop through this function below, the column names will be passed into
+# .x as a character string.
+calc_grouped_stat(
+  .data = l2c_survey_baseline_master_descriptives_table,
+  .col = "ml_hispanic",
+  .group = "group",
+  .baseline = 1,
+  .cat = 1,
+  .digits = 1
+)
+```
+
+## Loop all columns through the appropriate functions
+
+Overall stats
+
+```{r}
+master_table_analysis_list_w_overall <- master_table_analysis_list |> 
+  rowwise() |> 
+  mutate(
+    overall_stats = map(
+      .x = col_name,
+      .f = ~ calc_overall_stat (
+        .data = l2c_survey_baseline_master_descriptives_table,
+        .col = .x,
+        .baseline = baseline_visit,
+        .cat = categorical,
+        .digits = 1
+      )
+    )
+  )
+```
+
+```{r}
+unnest(
+  master_table_analysis_list_w_overall,
+  cols = c(overall_stats)
+)
+```
+
+Grouped stats
+
+```{r}
+master_table_analysis_list_w_grouped <- master_table_analysis_list_w_overall |> 
+  rowwise() |> 
+  mutate(
+    grouped_stats = map(
+      .x = col_name,
+      .f = ~ calc_grouped_stat (
+        .data = l2c_survey_baseline_master_descriptives_table,
+        .col = .x,
+        .group = "group",
+        .baseline = baseline_visit,
+        .cat = categorical,
+        .digits = 1
+      )
+    )
+  )
+```
+
+```{r}
+unnest(
+  master_table_analysis_list_w_grouped,
+  cols = c(grouped_stats)
+)
+```
+
+## Create a the table of descriptive stats
+
+Demographics only.
+
+Currently, ml_race is throwing things off. I think I can fix it by making it a factor, but I'm dropping it right now for testing.
+
+```{r}
+master_table_analysis_list_w_grouped |> 
+  filter(str_detect(col_name, "ml_")) |> 
+  select(overall_stats) |> 
+  unnest(cols = c(overall_stats))
+```
+
+```{r}
+master_table_analysis_list_w_grouped |> 
+  filter(str_detect(col_name, "ml_")) |> 
+  select(grouped_stats) |> 
+  unnest(cols = c(grouped_stats))
+```
+
+```{r}
+demographics_table <- left_join(
+  master_table_analysis_list_w_grouped |> 
+    filter(str_detect(col_name, "ml_")) |> 
+    select(overall_stats) |> 
+    unnest(cols = c(overall_stats)),
+  
+  master_table_analysis_list_w_grouped |> 
+    filter(str_detect(col_name, "ml_")) |> 
+    select(grouped_stats) |> 
+    unnest(cols = c(grouped_stats)),
+  
+  by = c("var", "cat")
+)
+```
+
+This isn't working because of the ", percent (95% CI)" part of var. I can fix it by taking that out in the functions above. Or, I can use the `stats_list` method like I did here: https://brad-cannell.github.io/r_notes/tables.html. That may be the way to go.
+
+How would that look?
+
+```{r}
+# Get n's for the headers
+n_overall <- l2c_survey_baseline_master_descriptives_table |> 
+  filter(visit == 1) |> 
+  summarise(overall = length(unique(id)))
+
+n_per_group <- l2c_survey_baseline_master_descriptives_table %>% 
+  filter(visit == 1) |>
+  count(group) %>% 
+  pull(n) %>%
+  set_names(levels(as.character(l2c_survey_baseline_master_descriptives_table$group)))
+```
+
+
+## Figure out the best way to style and disseminate the table (may need it's own repo)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
