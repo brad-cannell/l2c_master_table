@@ -16,6 +16,7 @@ n_mean_ci <- function(.data, .col, .digits) {
     meantables::mean_table({{.col}}) |> 
     meantables::mean_format("mean (lcl - ucl)", digits = .digits) |> 
     dplyr::select(var = response_var, n, formatted_stats)
+    # dplyr::mutate(var = paste0(var, ", mean (95% CI)"))
 }
 
 # For testing

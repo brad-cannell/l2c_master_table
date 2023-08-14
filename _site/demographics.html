@@ -60,6 +60,16 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 
+<script src="site_libs/htmlwidgets-1.5.4/htmlwidgets.js"></script>
+<link href="site_libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet">
+<script src="site_libs/datatables-binding-0.23/datatables.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<link href="site_libs/dt-core-1.11.3/css/jquery.dataTables.min.css" rel="stylesheet">
+<link href="site_libs/dt-core-1.11.3/css/jquery.dataTables.extra.css" rel="stylesheet">
+<script src="site_libs/dt-core-1.11.3/js/jquery.dataTables.min.js"></script>
+<link href="site_libs/crosstalk-1.2.0/css/crosstalk.min.css" rel="stylesheet">
+<script src="site_libs/crosstalk-1.2.0/js/crosstalk.min.js"></script>
+
 
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -102,7 +112,15 @@ ul.task-list li input[type="checkbox"] {
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#variable-name-key" id="toc-variable-name-key" class="nav-link active" data-scroll-target="#variable-name-key">Variable Name Key</a></li>
+  <li><a href="#overall-statistics" id="toc-overall-statistics" class="nav-link" data-scroll-target="#overall-statistics">Overall Statistics</a></li>
+  <li><a href="#statistics-by-randomization-arm" id="toc-statistics-by-randomization-arm" class="nav-link" data-scroll-target="#statistics-by-randomization-arm">Statistics By Randomization Arm</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -124,9 +142,62 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<p>Under construction</p>
+<p>This page contains tables of baseline demographic characteristics for the 442 unique Link2Care participants. First, the statistics are presented below for all participants overall. Then, there are presented by randomization arm – Usual Care Management (UCM), Usual Care Management + Smart Phone (UCM+SM), and Link2Care (L2C).</p>
+<!--
+Data cleaning
+I will eventually need to move this to one of the other files. I'm just trying to get a prototype done for Michael and Jenn to review as quickly as possible.
+-->
+<!-- ## Filter to baseline: Demographics come from visit 1 only -->
+<!-- ## Calculated variables -->
+<!-- ## Creating factors -->
+<!-- # Analysis -->
+<!-- ## Create lists of columns to analyze -->
+
+<!-- Right now, I'm thinking one table per section (e.g., demographics, etc.) -->
+<!-- ## Create a data frame that contains our overall summary statistics -->
+<!-- Later, turn these into functions? -->
+<!-- ## Bind together the continuous and categorical summary stats -->
+<!-- Later, turn this into a function? -->
+<!-- ## Create a data frame that contains our grouped summary statistics -->
+<!-- Later, turn these into functions? -->
+<!-- ## Bind together the continuous and categorical summary stats -->
+<!-- Later, turn this into a function? -->
+<!-- Make a variable name key -->
+<section id="variable-name-key" class="level2">
+<h2 class="anchored" data-anchor-id="variable-name-key">Variable Name Key</h2>
+<p>The following table provides a description for each variable that appears in the following tables of descriptive statistics.</p>
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="htmlwidget-61078e04285010156503" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-61078e04285010156503">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5"],["ml_age","ml_gender_f","ml_race_f","ml_race_eth_4cat_f","ml_hispanic_f"],["Participant's age at baseline.","Participant's self-reported sex at baseline.","Participant's self-reported race at baseline.","Participant's self-reported race at baseline. Collapsed into four categories.","Participant's self-report of Hispanic ethnicity at baseline."]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Variable Name<\/th>\n      <th>Variable Description<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+</section>
+<section id="overall-statistics" class="level2">
+<h2 class="anchored" data-anchor-id="overall-statistics">Overall Statistics</h2>
+<!-- Later, turn this into a function? -->
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="htmlwidget-7a7ad34d26deee8a7a9d" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-7a7ad34d26deee8a7a9d">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17"],[false,true,true,true,false,false,false,false,false,false,false,true,true,true,true,false,false],["ml_age","ml_gender_f","ml_gender_f","ml_gender_f","ml_race_f","ml_race_f","ml_race_f","ml_race_f","ml_race_f","ml_race_f","ml_race_f","ml_race_eth_4cat_f","ml_race_eth_4cat_f","ml_race_eth_4cat_f","ml_race_eth_4cat_f","ml_hispanic_f","ml_hispanic_f"],[null,"Male","Female","Other","Asian","Black or African American","American Indian or Alaskan Native","More Than One Race","Native Hawaiian or Pacific Islander","Other or Unknown","White","Black, non-Hispanic","White, non-Hispanic","Hispanic, any race","Other race or multiple races, non-Hispanic","Non-Hispanic","Hispanic"],[443,375,61,7,4,274,7,33,1,21,103,270,80,52,41,391,52],["40.2 (39.1 - 41.2)","84.7 (81.0 - 87.7)","13.8 (10.9 - 17.3)","1.6 (0.8 - 3.3)","0.9 (0.3 - 2.4)","61.9 (57.2 - 66.3)","1.6 (0.8 - 3.3)","7.4 (5.3 - 10.3)","0.2 (0.0 - 1.6)","4.7 (3.1 - 7.2)","23.3 (19.5 - 27.4)","60.9 (56.3 - 65.4)","18.1 (14.7 - 21.9)","11.7 (9.0 - 15.1)","9.3 (6.9 - 12.3)","88.3 (84.9 - 91.0)","11.7 (9.0 - 15.1)"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Shade<\/th>\n      <th>Variable<\/th>\n      <th>Category<\/th>\n      <th>N<\/th>\n      <th>Statistic (95% CI)<sup>1<\/sup><\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":20,"columnDefs":[{"className":"dt-center","targets":[4,5]},{"targets":0,"visible":false},{"targets":1,"visible":false},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[10,20,25,50,100],"rowCallback":"function(row, data, displayNum, displayIndex, dataIndex) {\nvar value=data[1]; $(row).css({'background-color':value == 0 ? \"white\" : value == 1 ? \"#ededed\" : null});\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+</div>
+</div>
+</section>
+<section id="statistics-by-randomization-arm" class="level2">
+<h2 class="anchored" data-anchor-id="statistics-by-randomization-arm">Statistics By Randomization Arm</h2>
+<!-- Later, turn this into a function? -->
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="htmlwidget-c1cce0a47a9f7d8f6773" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c1cce0a47a9f7d8f6773">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17"],[false,true,true,true,false,false,false,false,false,false,false,true,true,true,true,false,false],["ml_age","ml_gender_f","ml_gender_f","ml_gender_f","ml_race_f","ml_race_f","ml_race_f","ml_race_f","ml_race_f","ml_race_f","ml_race_f","ml_race_eth_4cat_f","ml_race_eth_4cat_f","ml_race_eth_4cat_f","ml_race_eth_4cat_f","ml_hispanic_f","ml_hispanic_f"],[null,"Male","Female","Other","Asian","Black or African American","American Indian or Alaskan Native","More Than One Race","Native Hawaiian or Pacific Islander","Other or Unknown","White","Black, non-Hispanic","White, non-Hispanic","Hispanic, any race","Other race or multiple races, non-Hispanic","Non-Hispanic","Hispanic"],[137,117,18,2,1,88,2,9,0,4,33,88,25,15,9,122,15],["39.7 (37.9 - 41.5)","85.4 (78.4 - 90.4)","13.1 (8.4 - 19.9)","1.5 (0.4 - 5.7)","0.7 (0.1 - 5.1)","64.2 (55.8 - 71.9)","1.5 (0.4 - 5.7)","6.6 (3.4 - 12.2)","0.0 (NaN - NaN)","2.9 (1.1 - 7.6)","24.1 (17.6 - 32.0)","64.2 (55.8 - 71.9)","18.2 (12.6 - 25.7)","10.9 (6.7 - 17.4)","6.6 (3.4 - 12.2)","89.1 (82.6 - 93.3)","10.9 (6.7 - 17.4)"],[136,115,19,2,1,91,2,8,0,5,29,90,20,16,10,120,16],["41.0 (39.1 - 42.9)","84.6 (77.4 - 89.7)","14.0 (9.1 - 20.9)","1.5 (0.4 - 5.7)","0.7 (0.1 - 5.1)","66.9 (58.5 - 74.3)","1.5 (0.4 - 5.7)","5.9 (3.0 - 11.4)","0.0 (NaN - NaN)","3.7 (1.5 - 8.6)","21.3 (15.2 - 29.1)","66.2 (57.8 - 73.7)","14.7 (9.7 - 21.8)","11.8 (7.3 - 18.4)","7.4 (4.0 - 13.2)","88.2 (81.6 - 92.7)","11.8 (7.3 - 18.4)"],[134,113,19,2,2,70,2,16,0,10,34,69,30,16,19,118,16],["40.4 (38.5 - 42.2)","84.3 (77.1 - 89.6)","14.2 (9.2 - 21.2)","1.5 (0.4 - 5.8)","1.5 (0.4 - 5.8)","52.2 (43.7 - 60.6)","1.5 (0.4 - 5.8)","11.9 (7.4 - 18.7)","0.0 (NaN - NaN)","7.5 (4.0 - 13.4)","25.4 (18.7 - 33.5)","51.5 (43.0 - 59.9)","22.4 (16.1 - 30.3)","11.9 (7.4 - 18.7)","14.2 (9.2 - 21.2)","88.1 (81.3 - 92.6)","11.9 (7.4 - 18.7)"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Shade<\/th>\n      <th>Variable<\/th>\n      <th>Category<\/th>\n      <th>N UCM<\/th>\n      <th>Statistic (95% CI) UCM<\/th>\n      <th>N UCM+SP<\/th>\n      <th>Statistic (95% CI) UCM+SP<\/th>\n      <th>N L2C<\/th>\n      <th>Statistic (95% CI) L2C<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":20,"columnDefs":[{"className":"dt-center","targets":[4,5,6,7,8,9]},{"targets":0,"visible":false},{"targets":1,"visible":false},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[10,20,25,50,100],"rowCallback":"function(row, data, displayNum, displayIndex, dataIndex) {\nvar value=data[1]; $(row).css({'background-color':value == 0 ? \"white\" : value == 1 ? \"#ededed\" : null});\n}"}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+</div>
+</div>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

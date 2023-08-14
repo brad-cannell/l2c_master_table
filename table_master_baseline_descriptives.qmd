@@ -41,7 +41,7 @@ dim(l2c_survey) # 1614 1299
 This is a table of baseline statistics. We will only need visit 1, and in a handful of cases, visit 2.
 
 ```{r}
-l2c_survey_baseline <- filter(l2c_survey, visit == 1 | visit == 2)
+l2c_survey_baseline <- dplyr::filter(l2c_survey, visit == 1 | visit == 2)
 ```
 
 ```{r}

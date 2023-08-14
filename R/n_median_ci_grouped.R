@@ -25,6 +25,7 @@ n_median_ci_grouped <- function(.data, .col, .digits) {
     ) |> 
     meantables::mean_format("median (lcl - ucl)", digits = .digits) |> 
     dplyr::select(var, group_cat = 1, n, formatted_stats) |>
+    # dplyr::mutate(var = paste0(var, ", median (95% CI)")) |> 
     # Display by group
     tidyr::pivot_wider(
       names_from = "group_cat",

@@ -18,6 +18,7 @@ n_mean_ci_grouped <- function(.data, .col, .digits) {
     meantables::mean_table({{.col}}) |> 
     meantables::mean_format("mean (lcl - ucl)", digits = .digits) |> 
     dplyr::select(var = response_var, group_cat, n, formatted_stats) |> 
+    # dplyr::mutate(var = paste0(var, ", mean (95% CI)")) |> 
     # Display by group_cat
     tidyr::pivot_wider(
       names_from = "group_cat",
@@ -40,6 +41,11 @@ n_mean_ci_grouped <- function(.data, .col, .digits) {
 
 # For testing
 # mtcars |>
-#   filter(!is.na(cyl)) |> 
-#   group_by(cyl) |> 
+#   filter(!is.na(cyl)) |>
+#   group_by(cyl) |>
 #   n_mean_ci_grouped(mpg, 1)
+
+# l2c_survey |> 
+#   filter(!is.na(group_f)) |> 
+#   group_by(group_f) |> 
+#   n_mean_ci_grouped(ml_age, 1)

@@ -4,33 +4,33 @@ title: "Overview"
 
 This website contains multiple web-based tables of baseline descriptive statistics for (nearly) every survey data variable collected as part of the Link2Care project. For more information about the Link2Care project, please see the primary public repository at: https://github.com/brad-cannell/link2care_public.
 
-```{=html}
-<!-- 
-Import the data that will be used to create the tables.
-Import `combined_participant_data.rds`. This dataset is created in `link2care_public/data_survey_21_merge.Rmd`. Additionally, this code assumes that this file is being run from the SharePoint `General` folder.
--->
-```
-The data for these tables is currently housed at UTHealth-Houston on the [Link2Care SharePoint site](https://uthtmc.sharepoint.com/sites/Link2Careproject). Contact Brad Cannell at [Michael.B.Cannell\@uth.tmc.edu](mailto:Michael.B.Cannell@uth.tmc.edu) if you have questions about accessing the data.
-
 ```{r}
+#| label: setup
 #| echo: false
-df_nm      <- "combined_participant_data.rds"
-folder     <- "../Participant Data/R Data/"
-path       <- paste0(folder, df_nm)
-l2c_survey <- readr::read_rds(path)
-df_size    <- l2c_survey |> utils::object.size() |> format(units = "auto")
-df_dim     <- dim(l2c_survey) |> format(big.mark = ",")
-# df_dim     <- paste0(df_dim[1], " rows and ", df_dim[2], " columns.")
+
+# Import the data that will be used to create the tables.
+# Import `combined_participant_data.rds`. This dataset is created in `link2care_public/data_survey_21_merge.Rmd`. Additionally, this code assumes that this file is being run from the SharePoint `General` folder.
+
+# Use `source("R/import_data.R")` to import the data at the top of every .qmd file. That way, the information in Administrative Information table on the home page is correct for all tables.
+# source("R/import_data.R")
+
+# Update: I moved source("R/import_data.R") to an .Rprofile file. That way, the file only runs once, rather than at the beginning of each qmd file. If this approach continues to work, then I will erase the notes above. 
 ```
+
+The data for these tables is currently housed at UTHealth-Houston on the [Link2Care SharePoint site](https://uthtmc.sharepoint.com/sites/Link2Careproject). Contact Brad Cannell at [Michael.B.Cannell\@uth.tmc.edu](mailto:Michael.B.Cannell@uth.tmc.edu) if you have questions about accessing the data.
 
 # Administrative Information
 
-|                           |                                                                                                                                      |                                                                                              |
-|----------------|-----------------|---------------------------------------|
-| Last updated:             | `r Sys.Date()`                                                                                                                       | The date the tables on this website were last updated.                                       |
-| Source data:              | `r df_nm`                                                                                                                            | The name of the dataset used to create the tables on this website.                           |
-| Source data path:         | `r folder`                                                                                                                           | The path to the source data.                                                                 |
-| Source data size:         | `r df_size`                                                                                                                          | The size of the source data.                                                                 |
-| Source data row count:    | `r df_dim[1]`                                                                                                                        | This includes *all* rows in the source data. Not *only* rows for data collected at baseline. |
-| Source data column count: | `r df_dim[2]`                                                                                                                        | The number of columns/variables currently contained in the source data.                      |
-| Codebook:                 | [link](https://github.com/brad-cannell/link2care_public/blob/master/codebooks/Combined%20Participant%20Survey%20Data%20Codebook.pdf) | Link to download the most current codebook for the source data.                              |
+|                                |                                                                                                                                      |                                                                                                                                         |
+|------------------|:----------------:|-------------------------------------|
+| Last updated:                  |                                                            `r Sys.Date()`                                                            | The date the tables on this website were last updated.                                                                                  |
+| Source data:                   |                                                              `r df_nm`                                                               | The name of the dataset used to create the tables on this website.                                                                      |
+| Source data path:              |                                                              `r folder`                                                              | The path to the source data.                                                                                                            |
+| Source data size:              |                                                             `r df_size`                                                              | The size of the source data.                                                                                                            |
+| Source data row count:         |                                                            `r df_dim[1]`                                                             | The source data used to create the tables on this website includes data collected a visit 1 and visit 2 only.                           |
+| Source data column count:      |                                                            `r df_dim[2]`                                                             | The number of columns/variables currently contained in the source data.                                                                 |
+| Count of participants:         |                                                          `r n_participants`                                                          | The number of unique participants in the source data.                                                                                   |
+| Count of UCM participants:     |                                                        `r n_per_group["UCM"]`                                                        | The number of unique participants in the source data who were in the usual care management arm of the Link2Care study.                  |
+| Count of UCM+SP participants:  |                                                      `r n_per_group["UCM+SP"]`                                                       | The number of unique participants in the source data who were in the usual care management plus smart phone arm of the Link2Care study. |
+| Count of L2C participants:     |                                                        `r n_per_group["L2C"]`                                                        | The number of unique participants in the source data who were in the Link2Care arm of the Link2Care study.                              |
+| Codebook:                      | [link](https://github.com/brad-cannell/link2care_public/blob/master/codebooks/Combined%20Participant%20Survey%20Data%20Codebook.pdf) | Link to download the most current codebook for the source data.                                                                         |

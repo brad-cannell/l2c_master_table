@@ -27,7 +27,7 @@
 fact_reloc <- function(.data, .col, .levels, .labels) {
   # Create a `_f` version of the column name. The glue syntax used in
   # `mutate()` doesn't work in `relocate()`.
-  nm <- rlang::as_name(enquo(.col))
+  nm <- rlang::as_name(rlang::enquo(.col))
   nm_f <- paste(nm, "f", sep = "_")
   
   .data |> 
