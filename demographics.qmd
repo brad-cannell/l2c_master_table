@@ -291,6 +291,49 @@ DT::datatable(
   )
 ```
 
+# 🔴 Testing out downloading
+
+Example from the [downloadthis website](https://fmmattioni.github.io/downloadthis/index.html). This works, but Excel isn't the most user-friendly format. 
+
+- See if you can get it to download a word flextable.
+- Then go back and make one table for overall and by group.
+
+```{r}
+#| label: download_xlsx_example
+#| echo: false
+
+demographics_table |> 
+  downloadthis::download_this(
+    output_name = "Demographics Overall",
+    output_extension = ".xlsx",
+    button_label = "Download table as xlsx",
+    button_type = "success",
+    has_icon = TRUE,
+    icon = "fa fa-save"
+  )
+```
+
+Turn `demographics_table` into a flextable object.
+
+```{r}
+demographics_table_ft <- flextable::flextable(demographics_table)
+flextable::save_as_docx(demographics_table_ft, path = "demographics_overall.docx")
+```
+
+```{r}
+#| label: download_docx_example
+#| echo: false
+downloadthis::download_file(
+  path = "demographics_overall.docx",
+  output_name = "Demographics Overall",
+  button_label = "Download table",
+  button_type = "success",
+  has_icon = TRUE,
+  icon = "fa fa-save"
+)
+```
+
+
 ## Statistics By Randomization Arm
 
 <!-- Later, turn this into a function? -->

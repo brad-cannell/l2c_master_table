@@ -1,0 +1,69 @@
+
+```{r}
+#| label: setup-about
+#| echo: false
+
+# Import the data that will be used to create the tables.
+# Import `combined_participant_data.rds`. This dataset is created in `link2care_public/data_survey_21_merge.Rmd`. Additionally, this code assumes that this file is being run from the SharePoint `General` folder.
+
+# Use `source("R/import_data.R")` to import the data at the top of every .qmd file. That way, the information in Administrative Information table on the home page is correct for all tables.
+# source("R/import_data.R")
+
+# Update: I moved source("R/import_data.R") to an .Rprofile file. That way, the file only runs once, rather than at the beginning of each qmd file. If this approach continues to work, then I will erase the notes above. 
+```
+
+::: callout-warning
+The information on this page is not likely to be useful to many users. Rather, this page is intended to assist with site maintenance.
+:::
+
+# Overview of the data
+
+The data for these tables is currently housed at UTHealth-Houston on the [Link2Care SharePoint site](https://uthtmc.sharepoint.com/sites/Link2Careproject). Contact Brad Cannell at [Michael.B.Cannell\@uth.tmc.edu](mailto:Michael.B.Cannell@uth.tmc.edu) if you have questions about accessing the data.
+
+The source data for all of the tables on this website is ``r df_nm``, which was created in the file `link2care_public/data_survey_21_merge.Rmd` and is stored on on the [Link2Care SharePoint site](https://uthtmc.sharepoint.com/sites/Link2Careproject) at ``r folder``.
+
+After importing the data, we modify it in the following ways before creating the descriptive tables:
+
+1. Keep rows for visit 1 and 2 only. The descriptive tables on this website currently contain _baseline_ statistics only. Most of the baseline data was collected at visit 1. However, there were a handful of survey measures that were collected for the first time at visit 2.
+
+2. Keep rows for randomized participants only. We want the sample to include participants who were randomized only. We do _not_ include participants who attended visit 1, but were not randomized.
+
+The modifications listed above are made in `import_data.R`.
+
+The table below contains other administrative information about the data for tracking and maintenance purposes. 
+
+# Administrative information about the data
+
+```{r}
+#| label: table-administrative
+#| echo: false
+
+# Turn numeric values into character strings for the table 
+today <- as.character(Sys.Date())
+rows <- as.character(df_dim[1])
+columns <- as.character(df_dim[2])
+n_overall <- as.character(n_participants) 
+n_ucm <- as.character(n_per_group["UCM"])
+n_ucmsp <- as.character(n_per_group["UCM+SP"])
+n_l2c <- as.character(n_per_group["L2C"])
+
+admin_info <- tibble::tribble(
+  ~Attribute,                  ~Value,    ~Description,
+  "Last updated:",             today,     "The date the tables on this website were last updated.",
+  "Source data:",              df_nm,     "The name of the dataset used to create the tables on this website.",
+  "Source data path:",         folder,    "The path to the source data.",
+  "Source data size:",         df_size,   "The size of the modified data used to create the tables on this website.",
+  "Source data row count:",    rows,      "The number of rows currently contained in the data used to create the tables on this website.",
+  "Source data column count:", columns,   "The number of columns/variables currently contained in the data used to create the tables on this website.",
+  "N participants:",           n_overall, "The number of unique participants in the data used to create the tables on this website.",
+  "N UCM participants:",       n_ucm,     "The number of unique participants in the data who were in the usual care management arm of the Link2Care study.",
+  "N UCM+SP participants:",    n_ucmsp,   "The number of unique participants in the data who were in the usual care management plus smart phone arm of the Link2Care study.",
+  "N L2C participants:",       n_l2c,     "The number of unique participants in the data who were in the Link2Care arm of the Link2Care study."
+)
+
+knitr::kable(admin_info, align = c("l", "c", "c"))
+```
+
+# Codebook
+
+The full codebook for the source data is available at: <https://github.com/brad-cannell/link2care_public/blob/master/codebooks/Combined%20Participant%20Survey%20Data%20Codebook.pdf>
