@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Link2Care Master Descriptive Tables - Overview</title>
+<title>Link2Care Master Descriptive Tables – about</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -83,11 +83,11 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="./index.html" rel="" target="" aria-current="page">
+    <a class="nav-link" href="./index.html" rel="" target="">
  <span class="menu-text">Home</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./about.html" rel="" target="">
+    <a class="nav-link active" href="./about.html" rel="" target="" aria-current="page">
  <span class="menu-text">About</span></a>
   </li>  
   <li class="nav-item">
@@ -106,31 +106,125 @@ ul.task-list li input[type="checkbox"] {
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#overview-of-the-data" id="toc-overview-of-the-data" class="nav-link active" data-scroll-target="#overview-of-the-data">Overview of the data</a></li>
+  <li><a href="#administrative-information-about-the-data" id="toc-administrative-information-about-the-data" class="nav-link" data-scroll-target="#administrative-information-about-the-data">Administrative information about the data</a></li>
+  <li><a href="#codebook" id="toc-codebook" class="nav-link" data-scroll-target="#codebook">Codebook</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
-<div class="quarto-title">
-<h1 class="title">Overview</h1>
+
+
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
 </div>
+<div class="callout-title-container flex-fill">
+Warning
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The information on this page is not likely to be useful to many users. Rather, this page is intended to assist with site maintenance.</p>
+</div>
+</div>
+<section id="overview-of-the-data" class="level1">
+<h1>Overview of the data</h1>
+<p>The data for these tables is currently housed at UTHealth-Houston on the <a href="https://uthtmc.sharepoint.com/sites/Link2Careproject">Link2Care SharePoint site</a>. Contact Brad Cannell at <a href="mailto:Michael.B.Cannell@uth.tmc.edu">Michael.B.Cannell@uth.tmc.edu</a> if you have questions about accessing the data.</p>
+<p>The source data for all of the tables on this website is <code>combined_participant_data.rds</code>, which was created in the file <code>link2care_public/data_survey_21_merge.Rmd</code> and is stored on on the <a href="https://uthtmc.sharepoint.com/sites/Link2Careproject">Link2Care SharePoint site</a> at <code>../Participant Data/R Data/</code>.</p>
+<p>After importing the data, we modify it in the following ways before creating the descriptive tables:</p>
+<ol type="1">
+<li><p>Keep rows for visit 1 and 2 only. The descriptive tables on this website currently contain <em>baseline</em> statistics only. Most of the baseline data was collected at visit 1. However, there were a handful of survey measures that were collected for the first time at visit 2.</p></li>
+<li><p>Keep rows for randomized participants only. We want the sample to include participants who were randomized only. We do <em>not</em> include participants who attended visit 1, but were not randomized.</p></li>
+</ol>
+<p>The modifications listed above are made in <code>import_data.R</code>.</p>
+<p>The table below contains other administrative information about the data for tracking and maintenance purposes.</p>
+</section>
+<section id="administrative-information-about-the-data" class="level1">
+<h1>Administrative information about the data</h1>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-sm table-striped small">
+<colgroup>
+<col style="width: 13%">
+<col style="width: 16%">
+<col style="width: 69%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: center;">Value</th>
+<th style="text-align: center;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Last updated:</td>
+<td style="text-align: center;">2023-08-21</td>
+<td style="text-align: center;">The date the tables on this website were last updated.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Source data:</td>
+<td style="text-align: center;">combined_participant_data.rds</td>
+<td style="text-align: center;">The name of the dataset used to create the tables on this website.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Source data path:</td>
+<td style="text-align: center;">../Participant Data/R Data/</td>
+<td style="text-align: center;">The path to the source data.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Source data size:</td>
+<td style="text-align: center;">8.9 Mb</td>
+<td style="text-align: center;">The size of the modified data used to create the tables on this website.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Source data row count:</td>
+<td style="text-align: center;">813</td>
+<td style="text-align: center;">The number of rows currently contained in the data used to create the tables on this website.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Source data column count:</td>
+<td style="text-align: center;">1,299</td>
+<td style="text-align: center;">The number of columns/variables currently contained in the data used to create the tables on this website.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">N participants:</td>
+<td style="text-align: center;">406</td>
+<td style="text-align: center;">The number of unique participants in the data used to create the tables on this website.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">N UCM participants:</td>
+<td style="text-align: center;">137</td>
+<td style="text-align: center;">The number of unique participants in the data who were in the usual care management arm of the Link2Care study.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">N UCM+SP participants:</td>
+<td style="text-align: center;">136</td>
+<td style="text-align: center;">The number of unique participants in the data who were in the usual care management plus smart phone arm of the Link2Care study.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">N L2C participants:</td>
+<td style="text-align: center;">134</td>
+<td style="text-align: center;">The number of unique participants in the data who were in the Link2Care arm of the Link2Care study.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="codebook" class="level1">
+<h1>Codebook</h1>
+<p>The full codebook for the source data is available at: <a href="https://github.com/brad-cannell/link2care_public/blob/master/codebooks/Combined%20Participant%20Survey%20Data%20Codebook.pdf" class="uri">https://github.com/brad-cannell/link2care_public/blob/master/codebooks/Combined%20Participant%20Survey%20Data%20Codebook.pdf</a></p>
 
 
-
-<div class="quarto-title-meta">
-
-    
-  
-    
-  </div>
-  
-
-</header>
-
-<p>This website contains multiple web-based tables of baseline descriptive statistics for (nearly) every survey data variable collected as part of the Link2Care project. For more information about the Link2Care project, please see the primary public repository at: <a href="https://github.com/brad-cannell/link2care_public" class="uri">https://github.com/brad-cannell/link2care_public</a>.</p>
-
-
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
