@@ -1,0 +1,430 @@
+---
+title: "Discrepancies Decision Data Checks"
+---
+
+This document was made in anticipation of a research team meeting to discuss differences within the data that may impact analytical decisions.
+
+# Libraries
+
+```{r, warning = FALSE, message = FALSE}
+library(here)
+library(tidyverse)
+library(readxl, warn.conflicts = FALSE)
+library(haven)
+```
+
+# Data
+
+The combined data set is stored as `baseline_data`, and imported using the master table script.
+
+```{r}
+source(here("R/import_data.R"))
+
+# Print a message for when this file is being sourced
+cat(
+  paste0(Sys.Date(), ":"),
+  "Combined Participant Baseline Data imported with", 
+  nrow(baseline_data), "rows and", 
+  ncol(baseline_data), "columns.\n"
+)
+
+# Check the most recent file modification dates and print for user when this
+# file is being sourced.
+
+cat(
+      "Combined Participant Data last modified on OneDrive", 
+      as.character(file.info(path)$mtime), "\n"
+    )
+
+# 2023-11-03: Combined Participant Baseline Data imported with 442 rows and 
+# 1037 columns.
+# Combined Participant Data last modified on OneDrive 2023-10-27 16:06:04 
+```
+
+The remaining data was stored in the Link2Care public data folders.
+
+```{r}
+base_path <- paste0(
+    substring(
+        here::here(), 
+        1, 
+        nchar(here::here())-nchar('link2care_master_table')
+    ),
+    'link2care_public/data/'
+    )
+```
+
+
+The Bridge Session rows identified as potentially containing typos in the date field were imported as `bridge_subset`.
+
+```{r}
+bridge_path <- paste0(
+    base_path,
+    'bridge_session_data/bridge_0_questionable_cols.rds'
+  )
+
+bridge_subset <- readRDS(bridge_path)
+
+# Print a message for when this file is being sourced
+cat(
+  paste0(Sys.Date(), ":"),
+  "Isolated Bridge Data imported with", nrow(bridge_subset), 
+  "rows and", ncol(bridge_subset), "columns.\n"
+)
+
+# Check the most recent file modification dates and print for user when this
+# file is being sourced.
+
+cat(
+      "Isolated Bridge Data last modified on OneDrive", 
+      as.character(file.info(bridge_path)$mtime), "\n"
+    )
+
+# 2023-11-03: Isolated Bridge Data imported with 107 rows and 10 columns.
+# Isolated Bridge Data last modified on OneDrive 2023-10-23 09:51:36 
+```
+
+The Master Log was inported as `master_log`.
+
+```{r}
+master_log_path  <- paste0(
+  base_path,
+  'master_log/master_log.xlsx'
+  )
+
+master_log <- read_excel(
+  master_log_path, 
+  sheet = "Screened In",
+  col_names = c(
+    "id", "baseline_dt",
+    "v2_dt", 
+    "v3_dt", 
+    "v4_dt", 
+    "v5_dt",
+    "group", "v2_status", "dropped_status", 
+    "name_first", "name_middle", "name_last",
+    "gender", "race", "hispanic_latino", "dob", "age", 
+    "care_manager"
+    ),
+  col_types = c(
+    "text", "skip", "date", rep("skip", 2),
+    "date", rep("skip", 4), 
+    "date", rep("skip", 4),
+    "date", rep("skip", 4),
+    "date", rep("skip", 2),
+    rep("text", 3),
+    rep("text", 3),
+    rep("text", 3), "date", "text",
+    rep("skip", 5), "text",
+    rep("skip", 15)
+    ),
+  skip = 1
+) |> 
+  # Coerce group to numeric so that it can be combined with the QDS data.
+  mutate(
+    group = case_when(
+      group == "UCM"    ~ 1,
+      group == "UCM+SP" ~ 2,
+      group == "L2C"    ~ 3
+    )
+  ) |>
+  # Coerce age to a numeric
+  mutate(age = as.numeric(age)) |>
+  # Remove empty rows
+  filter(!is.na(id))
+
+# Print a message for when this file is being sourced
+cat(
+  paste0(Sys.Date(), ":"),
+  "Master log imported with", nrow(master_log), "rows and", ncol(master_log),
+  "columns.\n"
+)
+
+# Check the most recent file modification dates and print for user when this
+# file is being sourced.
+
+cat(
+      "Master log last modified on OneDrive", 
+      as.character(file.info(master_log_path)$mtime), "\n"
+    )
+
+# 2023-11-03: Master log imported with 442 rows and 18 columns.
+# Master log last modified on OneDrive 2023-09-28 11:52:59
+```
+
+The full Bridge Session data was inported as `bridge_full`.
+
+```{r}
+bridge_path <- paste0(
+  base_path,
+  "bridge_session_data/bridge_session_minutes.xlsx"
+  )
+
+bridge_full <- read_excel(
+  bridge_path,
+  sheet = "Sheet1",
+  col_names = c(
+    "subject", "bridge_baseline_date", "bridge_v2_rand_date", 
+    "bridge_v5_sched_final_visit_date", "bridge_date_session", "bridge_type", 
+    "bridge_duration", "bridge_flag_ns_v2", "bridge_flag_dropped", 
+    "bridge_notes"
+  ),
+  col_types = c(
+    "numeric", rep("date", 3), "text", rep("numeric", 4), "text"
+  ),
+  na = c("", ".", "None"),
+  skip = 10
+)
+
+# Print a message for when this file is being sourced
+cat(
+  paste0(Sys.Date(), ":"),
+  "Bridge Data imported with", nrow(bridge_full), "rows and", 
+  ncol(bridge_full),"columns.\n"
+)
+
+# Check the most recent file modification dates and print for user when this
+# file is being sourced.
+
+cat(
+      "Bridge Data last modified on OneDrive", 
+      as.character(file.info(bridge_path)$mtime), "\n"
+    )
+
+# 2023-11-03: Bridge Data imported with 4377 rows and 10 columns.
+# Bridge Data last modified on OneDrive 2023-08-25 10:43:48 
+```
+
+# Modifications to Facilitate Isolation with R
+
+## Bridge Data Processing
+
+We repeated some standardization cleaning performed in data_survey_01_preprocess.qmd, which served to clean the Bridge Data in a way that R could utilize the information.
+
+```{r}
+# Remove non-date entries from date column, and convert to date
+
+bridge_full <- bridge_full |>
+  mutate(
+    bridge_date_session = if_else(
+      str_detect(bridge_date_session, "[A-Z]|[a-z]"), 
+      NA_character_, bridge_date_session
+    ),
+    bridge_date_session = as.numeric(bridge_date_session),
+    bridge_date_session = as.Date(bridge_date_session, origin = "1899-12-30")
+  )
+
+# Remove content of 'notes' rows
+
+bridge_full[1, "bridge_notes"] <- NA_character_
+bridge_full[2, "bridge_notes"] <- NA_character_
+
+# Remove rows that only contained missing values
+
+bridge_full <- bridge_full |>
+  # Create missing data dummy variables
+  mutate(
+    across(
+      everything(),
+      is.na,
+      .names = "{col}_miss"
+    )
+  ) |> 
+  # Sum missing data dummy variables
+  rowwise() |> 
+  mutate(
+    n_missing = sum(c_across(ends_with("_miss")))
+  ) |> 
+  ungroup() |> 
+  # Drop missing data dummy variables
+  select(-ends_with("_miss")) |> 
+  # Drop rows that are missing in every column
+  filter(!n_missing == ncol(bridge_full)) |>
+  # Drop the count of missing variables
+  select(-n_missing)
+
+# Carry forward variables that were only listed on the first set of rows
+# for a subject
+
+bridge_full <- bridge_full |>
+  # Carry forward id
+  fill(subject) |> 
+  group_by(subject) |> 
+  # Carry forward other variables grouped by id
+  fill(
+    bridge_baseline_date, bridge_v2_rand_date, bridge_v5_sched_final_visit_date
+  ) |> 
+  ungroup()
+
+# Convert session-type ('bridge_type') into a factor
+
+bridge_full <- bridge_full |>
+    mutate(
+    # Change NA to None for type
+    bridge_type = if_else(is.na(bridge_type), 4, bridge_type),
+    # Create factor version
+    bridge_type_f = factor(
+      bridge_type,
+      1:4,
+      c("case_management", "crisis_management", "other", "none")
+    )
+  )
+
+# Warning: There was 1 warning in `mutate()`.
+# ℹ In argument: `bridge_date_session = as.numeric(bridge_date_session)`.
+# Caused by warning:
+# ! NAs introduced by coercion
+```
+
+## Flagging Discrepancies between Master Log and Subjective Versions of Demographics
+
+We flagged any row that had a discrepancy between the subject-given value column, and the master-log recorded value column, for our key demographic variables: age, race, hispanic ethnicity, and sex/gender.
+
+```{r}
+baseline_data <- baseline_data |>
+  dplyr::mutate(
+      age_diff = ifelse(sq_04_subj_age != sq_04_subj_age_ml, TRUE, FALSE),
+      race_diff = ifelse(sq_03_subj_race != sq_03_subj_race_ml, TRUE, FALSE),
+      hispanic_diff = ifelse(
+          sq_02_subj_hispanic != sq_02_subj_hispanic_ml, 
+          TRUE, 
+          FALSE
+        ),
+      gender_diff = ifelse(sq_01_subj_gender != sq_01_subj_gender_ml, TRUE, FALSE)
+    )
+```
+
+# Demographic Differences (Master Log vs Subject Responses)
+
+## Sex/Gender
+
+There were no subjects with a discrepancy in Sex/Gender values
+
+```{r}
+sum(baseline_data$gender_diff)
+```
+
+## Race
+
+There were 12 subjects with a discrepancy in Race values: 
+
+2182, 2210, 2215, 2260, 2266, 2323, 2333, 2344, 2358, 2380, 2400, 2409
+
+```{r}
+race_ids <- pull(
+  baseline_data |>
+    filter(race_diff) |>
+    select(id) |>
+    distinct()
+  )
+
+length(race_ids)
+```
+
+In inspecting these subjects, we can see that only race varied for these subjects (hispanic ethnicity was consistent). 
+
+```{r}
+baseline_data |>
+  filter(race_diff) |>
+  select(
+    id, sq_03_subj_race, sq_03_subj_race_ml, 
+    sq_02_subj_hispanic, sq_02_subj_hispanic_ml
+    )
+```
+
+
+## Hispanic Ethnicity
+
+There were 4 subjects with a discrepancy in Hispanic Ethnicity values: 
+
+2148, 2295, 2381, 2420
+
+```{r}
+ethn_ids <- pull(
+  baseline_data |>
+    filter(hispanic_diff) |>
+    select(id) |>
+    distinct()
+  )
+
+length(ethn_ids)
+```
+
+In viewing these subjects, we note the subjects identified themselves as Hispanic, but they were not identified as Hispanic in the Master Log. Race was consistent for all subjects.
+
+```{r}
+baseline_data |>
+  filter(hispanic_diff) |>
+  select(
+    id, sq_03_subj_race, sq_03_subj_race_ml, 
+    sq_02_subj_hispanic, sq_02_subj_hispanic_ml
+    )
+```
+
+## Age
+
+There were 33 subjects with a discrepancy in Age values between Subjective responses and the Master Log: 
+
+2006, 2023, 2080, 2087, 2099, 2120, 2126, 2130, 2144, 2145, 2161, 2176, 2180, 2210, 2229, 2240, 2253, 2265, 2266, 2269, 2290, 2304, 2322, 2324, 2326, 2333, 2339, 2349, 2357, 2358, 2365, 2434, 2437
+
+```{r}
+age_ids <- pull(
+  baseline_data |>
+    filter(age_diff) |>
+    select(id) |>
+    distinct()
+  )
+
+length(age_ids)
+```
+
+In viewing these subjects, we note that the subject-provided ages appear more consistent with age calculated from the subject's date of birth (from the master log) against the baseline collection date.
+
+```{r}
+baseline_data |>
+  filter(age_diff) |>
+  mutate(
+    diff_subj_ml = sq_04_subj_age - sq_04_subj_age_ml,
+    diff_subj_calc = sq_04_subj_age - sq_04_subj_age_calc,
+    diff_ml_calc = sq_04_subj_age_ml - sq_04_subj_age_calc
+  )|>
+  select(
+    id, sq_04_subj_age, sq_04_subj_age_ml, sq_04_subj_age_calc,
+    diff_subj_ml, diff_subj_calc, diff_ml_calc
+  )
+```
+
+# Bridge Session Differences
+
+There were 107 individual dates, across 31 subjects, in the Bridge Session Data that appeared to contain typographic errors, placing the date outside of the range of data collection for a subject.
+
+```{r}
+bridge_subj_list <- unique(bridge_subset$subject)
+nrow(bridge_subset)
+length(bridge_subj_list)
+```
+
+We can examine each subject individually in the full bridge data. The visits identified in the subset were flagged, and the recorded date of visit 5 for the subject was also included. 
+
+```{r}
+target_subject <- bridge_subj_list[1]
+
+subject_dates <- pull(
+  bridge_subset |>
+    filter(subject == target_subject) |>
+    select(bridge_date_session)
+)
+
+bridge_full |>
+  filter(subject == target_subject) |>
+  select(
+    subject, bridge_date_session, bridge_baseline_date, 
+    bridge_v5_sched_final_visit_date, bridge_flag_dropped
+    ) |>
+  mutate(
+    flag_visit = (bridge_date_session %in% subject_dates),
+    ml_v5_dt = master_log[master_log$id == target_subject,]$v5_dt
+  ) |>
+  relocate(subject, flag_visit, ml_v5_dt)
+```
+
