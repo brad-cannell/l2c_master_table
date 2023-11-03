@@ -22,7 +22,10 @@ n_percent_ci_grouped <- function(.data, .col, .group_by, .digits) {
   first_second_mixed <- c(rbind(first_half, second_half))
   first_second_mixed <- first_second_mixed + 2 # account for `var` and `cat`
   result             <- dplyr::select(result, 1, 2, all_of(first_second_mixed))
-  
+  result             <- result |>
+                          dplyr::mutate(statistic = 'Frequency % (95% CI)') |>
+                          dplyr::relocate(var, cat, statistic)
+
   # Return results
   result
 }

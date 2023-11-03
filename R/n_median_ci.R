@@ -23,8 +23,9 @@ n_median_ci <- function(.data, .col, .digits) {
       ucl    = sort({{.col}})[stats::qbinom(.975, length({{.col}}), 0.5)]
     ) |> 
     meantables::mean_format("median (lcl - ucl)", digits = .digits) |> 
-    dplyr::select(var, n, formatted_stats) 
-    # dplyr::mutate(var = paste0(var, ", median (95% CI)"))
+    dplyr::select(var, n, formatted_stats) |>
+    dplyr::mutate(statistic = 'Median (95% CI)') |>
+    dplyr::relocate(var, statistic)
 }
 
 # For testing

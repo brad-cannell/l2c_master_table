@@ -16,7 +16,9 @@ n_percent_ci <- function(.data, .col, .digits) {
     dplyr::filter(!is.na({{.col}})) |> 
     freqtables::freq_table({{.col}}) |> 
     freqtables::freq_format(recipe = "percent (lcl - ucl)", digits = .digits) |> 
-    dplyr::select(var, cat, n, formatted_stats)
+    dplyr::select(var, cat, n, formatted_stats) |>
+    dplyr::mutate(statistic = 'Frequency % (95% CI)') |>
+    dplyr::relocate(var, cat, statistic)
 }
 
 # For testing

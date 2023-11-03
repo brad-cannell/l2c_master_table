@@ -40,7 +40,9 @@ n_median_ci_grouped <- function(.data, .col, .digits) {
   first_second_mixed <- c(rbind(first_half, second_half))
   first_second_mixed <- first_second_mixed + 1 # account for the first column, `var`
   result             <- dplyr::select(result, 1, all_of(first_second_mixed))
-  
+  result             <- result |>
+                            dplyr::mutate(statistic = 'Median (95% CI)') |>
+                            dplyr::relocate(var, statistic)
   # Return result
   result
 }
