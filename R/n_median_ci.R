@@ -19,8 +19,14 @@ n_median_ci <- function(.data, .col, .digits) {
       n      = sum(!is.na({{.col}})),
       n_miss = sum(is.na({{.col}})),
       median = stats::median({{.col}}, na.rm = TRUE),
-      lcl    = sort({{.col}})[stats::qbinom(.025, length({{.col}}), 0.5)],
-      ucl    = sort({{.col}})[stats::qbinom(.975, length({{.col}}), 0.5)]
+      lcl    = sort(na.omit({{.col}}))[stats::qbinom(.025, 
+                                                     length(na.omit({{.col}})), 
+                                                     0.5)
+                                       ],
+      ucl    = sort(na.omit({{.col}}))[stats::qbinom(.975, 
+                                                     length(na.omit({{.col}})), 
+                                                     0.5)
+                                       ]
     ) |> 
     meantables::mean_format("median (lcl - ucl)", digits = .digits) |> 
     dplyr::select(var, n, formatted_stats) |>
