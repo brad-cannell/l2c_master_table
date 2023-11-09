@@ -168,8 +168,8 @@ get_stats_table <- function(
       .x = c(desired_col_order),
       .f = ~ dplyr::bind_rows(stats_list[[.x]])
     ) |>
-      # Reorder the columns so that `cat` and `n` comes after `var`
-      dplyr::select(var, cat, n, everything())
+      # Reorder the columns so that `cat` comes after `var`
+      dplyr::select(var, cat, everything())
     
     # If the key is passed, and all desired_col_order vars are in key_df$doc_var,
     # rename all 'var' values in 'stats_list' to the 'source_var' for display.
@@ -186,35 +186,67 @@ get_stats_table <- function(
     }
     
     # Add a column to facilitate shading every other 'var' in 'stats_table'
-    stats_table <- add_shade_column(stats_table)
+    display_table <- add_shade_column(stats_table)
     
-    stats_table <- DT::datatable(
-      stats_table,
-      colnames = c(
-        "Shade", "Variable", "Category", "N", "Statistic Type", 
-        "Statistic Value"
-      ),
-      #escape = FALSE, # So the HTML superscript in the column header will work
-      options = list(
-        pageLength = 20,
-        columnDefs = list(
-          # Center n and formatted stats
-          list(className = 'dt-center', targets = 4:5),
-          # Hide row numbers column from view
-          list(targets = 0, visible = FALSE),
-          # Hide "shade" column from view
-          list(targets = 1, visible = FALSE)
+    if (is.null(group_var)){
+      # If not grouped:
+
+
+      display_table <- DT::datatable(
+        display_table,
+        colnames = c(
+          "Shade", "Variable", "Category", "N", "Statistic Type",
+          "Statistic Value"
+        ),
+        options = list(
+          pageLength = 20,
+          columnDefs = list(
+            # Center n and formatted stats
+            list(className = 'dt-center', targets = 4:5),
+            # Hide row numbers column from view
+            list(targets = 0, visible = FALSE),
+            # Hide "shade" column from view
+            list(targets = 1, visible = FALSE)
+          )
         )
-      )
-    ) |> 
-      DT::formatStyle(
-        "shade",
-        target = "row",
-        backgroundColor = DT::styleEqual(c(0, 1), shade_colors)
-      )
+      ) |>
+        DT::formatStyle(
+          "shade",
+          target = "row",
+          backgroundColor = DT::styleEqual(c(0, 1), shade_colors)
+        )
+    }
+
+    if(!is.null(group_var)){
+      
+      display_table <- DT::datatable(
+        display_table,
+        colnames = c(
+          "Shade", "Variable", "Category", "Statistic Type", 
+          "UCM N", "UCM Statistic", "UCM+SP N", "UCM+SP Statistic", 
+          "L2C N", "L2C Statistic"
+        ),
+        options = list(
+          pageLength = 20,
+          columnDefs = list(
+            # Center n and formatted stats
+            list(className = 'dt-center', targets = 4:5),
+            # Hide row numbers column from view
+            list(targets = 0, visible = FALSE),
+            # Hide "shade" column from view
+            list(targets = 1, visible = FALSE)
+          )
+        )
+      ) |>
+        DT::formatStyle(
+          "shade",
+          target = "row",
+          backgroundColor = DT::styleEqual(c(0, 1), shade_colors)
+        )
+
+    }
     
     # Return the summary statistics table
-    stats_table
-    
+    output = list('table' = stats_table, 'display' = display_table)
   }
 }
