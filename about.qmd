@@ -4,12 +4,22 @@
 #| echo: false
 
 # Import the data that will be used to create the tables.
-# Import `combined_participant_data.rds`. This dataset is created in `link2care_public/data_survey_21_merge.Rmd`. Additionally, this code assumes that this file is being run from the SharePoint `General` folder.
+# Import `combined_data_03.rds`. This data set was created in the final
+# steps of the variable map processing pipeline:
+# `link2care_public/data_survey_05_post_processing.qmd`
+# This code assumes that the repositories for `link2care_public` and 
+# `link2care_master_table` are stored in the same parent folder, accessible
+# through the 'here' package.
 
-# Use `source("R/import_data.R")` to import the data at the top of every .qmd file. That way, the information in Administrative Information table on the home page is correct for all tables.
+# Use `source("R/import_data.R")` to import the data at the top of every 
+# .qmd file. That way, the information in Administrative Information 
+# table on the home page is correct for all tables.
 # source("R/import_data.R")
 
-# Update: I moved source("R/import_data.R") to an .Rprofile file. That way, the file only runs once, rather than at the beginning of each qmd file. If this approach continues to work, then I will erase the notes above. 
+# Update: I moved source("R/import_data.R") to an .Rprofile file. 
+# That way, the file only runs once, rather than at the beginning of each 
+# qmd file. If this approach continues to work, then I will erase the notes 
+# above. 
 ```
 
 ::: callout-warning
@@ -20,7 +30,7 @@ The information on this page is not likely to be useful to many users. Rather, t
 
 The data for these tables is currently housed at UTHealth-Houston on the [Link2Care SharePoint site](https://uthtmc.sharepoint.com/sites/Link2Careproject). Contact Brad Cannell at [Michael.B.Cannell\@uth.tmc.edu](mailto:Michael.B.Cannell@uth.tmc.edu) if you have questions about accessing the data.
 
-The source data for all of the tables on this website is ``r df_nm``, which was created in the file `link2care_public/data_survey_21_merge.Rmd` and is stored on on the [Link2Care SharePoint site](https://uthtmc.sharepoint.com/sites/Link2Careproject) at ``r folder``.
+The source data for all of the tables on this website is ``r df_nm``, which was the final creation of the processing pipeline in the file `link2care_public/data_survey_05_post_processing.qmd` and is stored on on the [Link2Care SharePoint site](https://uthtmc.sharepoint.com/sites/Link2Careproject) at ``r folder``.
 
 After importing the data, we modify it in the following ways before creating the descriptive tables:
 
@@ -66,4 +76,4 @@ knitr::kable(admin_info, align = c("l", "c", "c"))
 
 # Codebook
 
-The full codebook for the source data is available at: <https://github.com/brad-cannell/link2care_public/blob/master/codebooks/Combined%20Participant%20Survey%20Data%20Codebook.pdf>
+The full codebook for the source data is available at: <https://github.com/brad-cannell/link2care_public/blob/master/codebooks/Link2Care%20Combined%20Subject%20Data.pdf>
