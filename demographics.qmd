@@ -3,20 +3,29 @@ title: "Demographics"
 params:
   characteristic_description: "demographic"
 ---
+<!-- # Step 1: Initiating Document Items -->
 
-```{r}
+<!-- ## Step 1.1: Function & Base Data Imports -->
+
+```{r, warning = FALSE}
 #| label: demographics-setup
 #| echo: false
 library(dplyr, warn.conflicts = FALSE)
 library(haven)
 
 source("R/add_shade_column.R")
+source("R/download_buttons.R")
 
 # Import the data that will be used to create the tables.
-# Use `source("R/import_data.R")` to import the data at the top of every .qmd file. That way, the information in Administrative Information table on the home page is correct for all tables.
+# Use `source("R/import_data.R")` to import the data at the top of every 
+# .qmd file. That way, the information in Administrative Information table 
+# on the home page is correct for all tables.
 # source("R/import_data.R")
 
-# Update: I moved source("R/import_data.R") to an .Rprofile file. That way, the file only runs once, rather than at the beginning of each qmd file. If this approach continues to work, then I will erase the notes above. 
+# Update: I moved source("R/import_data.R") to an .Rprofile file. 
+# That way, the file only runs once, rather than at the beginning of each 
+# qmd file. If this approach continues to work, then I will erase the notes 
+# above. 
 
 # Overall - Continuous columns
 source("R/n_mean_ci.R")
@@ -33,197 +42,355 @@ source("R/cont_stats_grouped.R")
 
 # By group - Categorical columns
 source("R/n_percent_ci_grouped.R")
+
+# Generating Statistics Lists
+source("R/stats_list_cat.R")
+source("R/stats_list_cont.R")
+
+# Processing into Table
+source("R/get_stats_table.R")
 ```
 
-This page contains tables of baseline `r params$characteristic_description` characteristics for the `r n_participants` unique Link2Care participants. First, the statistics are presented below for all participants overall. Then, there are presented by randomization arm -- Usual Care Management (UCM), Usual Care Management + Smart Phone (UCM+SM), and Link2Care (L2C).
+<!-- ## Step 1.2: Selection of Document Data -->
 
-<!--
-Data cleaning
-I will eventually need to move this to one of the other files. I'm just trying to get a prototype done for Michael and Jenn to review as quickly as possible.
--->
+```{r}
+#| label: demographics-def-data
+#| echo: false
 
-<!-- ## Filter to baseline: Demographics come from visit 1 only -->
+# Select the imported data from `import_data()` desired for the document
+# ===========================================================================
+doc_data <- baseline_data
+```
+
+<!-- ## Step 1.2: Select Variables for Document: Key, Master Log, Subjective -->
+
+```{r}
+#| label: demographics-var-list
+#| echo: false
+
+# Select variables from data set for document
+# ===========================================================================
+# Select variables in the source data set by assigning the 
+# in-doc variable name (potential use for 'streamlining' this process to 
+# turn into a useful package, or at least heavily reuse the code in other
+# projects with similar needs), to the original name of the variable in
+# the source data (desired for display, for codebook & data set consistency)
+
+# Key Variables: 
+# --------------------------------------------------------------------------
+# Variables that apply to both 'master' and 'subjective' 
+# versions of variables (such as subject/observation ID key)
+
+key <- tibble::tribble(
+  ~doc_var,       ~source_var,
+  'id',           'id',
+  'group',        'group',
+  'calc_age',     'sq_04_subj_age_calc',
+  'ml_gender',    'sq_01_subj_gender_ml',
+  'ml_race',      'sq_03_subj_race_ml',
+  'ml_hispanic',  'sq_02_subj_hispanic_ml'
+)
+
+
+
+# Set Desired Display Order of Variables
+# --------------------------------------------------------------------------
+# Use the 'doc_var' versions of the variables listed in the Key.
+# Used to standardize display order in the created summary tables.
+
+desired_display_order <- c(
+  'id', 'group', 'calc_age', 'ml_gender', 'ml_race', 'ml_hispanic'
+)
+```
+
+<!-- ## Step 1.3: Filter Source Data for Document -->
 
 ```{r}
 #| label: demographics-filter-baseline
 #| echo: false
-l2c_survey <- l2c_survey |> 
-  filter(visit == 1)
+
+# Filter for Desired Variables
+# ==========================================================================
+# To reduce the size of the data processed in the document, only the
+# desired variables will be kept. Tidyselect is used, as it will throw
+# an error if a variable does not exist in the original data.
+
+# List Desired Columns
+# --------------------------------------------------------------------------
+
+desired_source_cols <- c(
+  key$source_var, 'drop_flag')
+
+
+# Filter Data
+# --------------------------------------------------------------------------
+doc_data <- doc_data |> 
+  dplyr::select(all_of(desired_source_cols))
+
+# Rename Columns to 'doc_vars'
+# --------------------------------------------------------------------------
+doc_data <- doc_data |>
+  dplyr::rename_at(
+    c(key$source_var),
+    ~c(key$doc_var)
+  )
 ```
 
-<!-- ## Calculated variables -->
+<!-- ## Step 1.4: OPTIONAL: Calculated Variables for Document -->
 
 ```{r}
+#| label: demographics-addtl-calc
 #| echo: false
-l2c_survey <- l2c_survey |>
+
+# OPTIONAL: Calculate variables, such as collapsing categories or adding
+# flags specific to this document
+# ===========================================================================
+
+# Creating collapsed versions of race/ethnicity columns
+
+doc_data <- doc_data |>
   mutate(
-    ml_race_3cat = case_when(
+    race_3cat = case_when(
       is.na(ml_race)  ~ NA_integer_,
-      ml_race == "AA" ~ 1, # "Black or African American"
-      ml_race == "W"  ~ 2, # "White"
-      TRUE            ~ 3, # "Other race or multiple races"
+      ml_race == "Black or African American" ~ 1, # "Black or African American"
+      ml_race == "White"  ~ 2, # "White"
+      TRUE ~ 3, # "Other race or multiple races"
     ),
-    ml_race_eth_4cat = case_when(
+    race_eth_4cat = case_when(
       is.na(ml_hispanic) ~ NA_integer_,
-      ml_hispanic == "Y" ~ 3, # "Hispanic, any race",
-      ml_race == "AA"    ~ 1, # "Black, non-Hispanic",
-      ml_race == "W"     ~ 2, # "White, non-Hispanic",
-      TRUE               ~ 4, # "Other race or multiple races, non-Hispanic"
+      ml_hispanic == "Yes" ~ 3, # "Hispanic, any race",
+      ml_race == "Black or African American" ~ 1, # "Black, non-Hispanic",
+      ml_race == "White" ~ 2, # "White, non-Hispanic",
+      TRUE  ~ 4, # "Other race or multiple races, non-Hispanic"
     )
   ) |> 
-  relocate(ml_race_3cat, .after = ml_race) |> 
-  relocate(ml_race_eth_4cat, .after = ml_race_3cat)
+  mutate(
+    race_3cat = factor(
+      race_3cat, 
+      levels = c(1, 2, 3),
+      labels = c(
+        "Black or African American", "White", "Other race or multiple races"
+        )
+      ),
+    race_eth_4cat = factor(
+      race_eth_4cat, 
+      levels = c(1, 2, 3, 4),
+      labels = c(
+        "Black or African American, non-Hispanic", "White, non-Hispanic",
+        "Hispanic, any race",
+        "Other race or multiple races, non-Hispanic"
+        )
+      )
+  ) |>
+  relocate(race_3cat, .after = ml_race) |> 
+  relocate(race_eth_4cat, .after = race_eth_4cat)
+
+# Adding Calculated Variables to the Variable Key
+
+calc_vars <- tibble::tribble(
+  ~doc_var,       ~source_var,       ~description,
+  'race_3cat',     NA_character_,   paste0(
+                                          "Participant's race at baseline",
+                                          " (Master Log). Collapsed into", 
+                                          " three categories"
+                                          ),
+  'race_eth_4cat', NA_character_,   paste0(
+                                          "Participant's race and Hispanic",
+                                          "ethnicity at baseline",
+                                          " (Master Log). Collapsed into", 
+                                          " four categories"
+                                          )
+  ) |>
+  dplyr::mutate(
+    source_var = paste(doc_var, "(calculated in master tables)")
+  )
+
+# Insert Calculated Variables into Desired Display Order
+
+desired_display_order <- append(
+  desired_display_order, 
+  'race_3cat', 
+  after=which(desired_display_order == 'ml_race')
+  )
+# R does not like to take appending in pipes, apparently
+desired_display_order <- append(
+  desired_display_order, 
+  'race_eth_4cat', 
+  after=which(desired_display_order == 'race_3cat')
+  )
 ```
 
-<!-- ## Creating factors --> 
+<!-- ## Step 1.5: Polish Variable Key with Descriptions -->
 
 ```{r}
+#| label: demographics-key-descriptions
 #| echo: false
-source("R/fact_reloc.R")
+
+# Pull Initial Descriptions For Variables from the Data Set Attributes
+
+key <- key |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    'description' = attributes(doc_data[[doc_var]])$label
+    ) |>
+  dplyr::ungroup()
 ```
 
 ```{r}
+#| label: demographics-key-descriptions-modification
 #| echo: false
-l2c_survey <- l2c_survey |> 
-  fact_reloc(group, 1:3, c("UCM", "UCM+SP", "L2C")) |> 
-  fact_reloc(ml_gender, c("M", "F", "Other"), c("Male", "Female", "Other")) |> 
-  fact_reloc(ml_hispanic, c("N", "Y"), c("Non-Hispanic", "Hispanic")) |> 
-  fact_reloc(
-    ml_race, 
-    c("A", "AA", "AI/AN", "More Than One", "NH/PI", "O/U", "W"),
-    c(
-      "Asian", "Black or African American", "American Indian or Alaskan Native",
-      "More Than One Race", "Native Hawaiian or Pacific Islander",
-      "Other or Unknown", "White"
+
+# Optional Modifications of Key:
+# 1) Modifying labels
+# 2) Addition of Calculated Variables
+# 3) Reordering Variables
+
+key <- key |>
+  dplyr::mutate(description = case_when(
+    stringr::str_detect(doc_var, 'id') ~ 'unique identifier',
+    stringr::str_detect(doc_var, 'group') ~ 'assigned treatment group',
+    stringr::str_detect(doc_var, 'age') ~ 'age (years) at baseline',
+    stringr::str_detect(doc_var, 'gender') ~ 'sex/gender at baseline',
+    stringr::str_detect(doc_var, 'race') ~ 'race at baseline',
+    stringr::str_detect(doc_var, 'hispanic') ~ 'Hispanic ethnicity at baseline'
     )
-  ) |> 
-  fact_reloc(
-    ml_race_3cat, 
-    1:3, 
-    c("Black or African American", "White", "Other race or multiple races")
-  ) |> 
-  fact_reloc(
-    ml_race_eth_4cat,
-    1:4,
-    c(
-      "Black, non-Hispanic", "White, non-Hispanic", "Hispanic, any race",
-      "Other race or multiple races, non-Hispanic"
-    )
+  ) |>
+  dplyr::mutate(
+    description = paste0("Participant's ", description)
+  ) |>
+  dplyr::mutate(
+    description = ifelse(
+      doc_var == 'calc_age',
+      paste0(
+        "Participant's age (years) at baseline calculated from date of ",
+        "birth and baseline date."
+        ),
+      description
+      )
+  ) |>
+  bind_rows(calc_vars) |>
+  dplyr::arrange(match(doc_var, desired_display_order))
+```
+
+<!-- # Step 1.6: Create Lists of Columns to Analyze -->
+
+<!-- Brad Note: Right now, I'm thinking one table per section (e.g., demographics, etc.) -->
+```{r}
+#| label: demographics-define-cols-cont-mean
+#| echo: false
+cont_mean_cols <- c(
+  "calc_age"
+  )
+```
+
+```{r}
+#| label: demographics-define-cols-cont-median
+#| echo: false
+
+cont_median_cols <- c(
+  "calc_age"
+)
+```
+
+```{r}
+#| label: demographics-define-cols-cont
+#| echo: false
+cat_cols <- c(
+  "ml_gender", "ml_race", "ml_hispanic", "race_3cat", "race_eth_4cat"
+  )
+```
+
+```{r}
+#| label: demographics-define-cols-order
+#| echo: false
+desired_col_order <- c(
+  cont_mean_cols, cont_median_cols, cat_cols
+  )
+```
+
+<!-- # Step 2: Analysis -->
+
+<!-- ## Step 2.1: Create data frames that contains our overall summary statistics -->
+
+```{r}
+#| label: demographics-stats-list-overall-all
+#| echo: false
+overall_all_table <- get_stats_table(
+  doc_data, 
+  'cont_mean_cols' = cont_mean_cols, 
+  'cont_median_cols' = cont_median_cols,
+  'cat_cols' = cat_cols, 
+  'desired_col_order' = desired_col_order,
+  'key' = key, 
+  'shade_colors' = c('white', '#ededed')
+  )
+```
+
+```{r}
+#| label: demographics-stats-list-overall-incl
+#| echo: false
+overall_incl_table <- get_stats_table(
+  doc_data |>
+    dplyr::filter(!drop_flag), 
+  'cont_mean_cols' = cont_mean_cols, 
+  'cont_median_cols' = cont_median_cols,
+  'cat_cols' = cat_cols, 
+  'desired_col_order' = desired_col_order,
+  'key' = key, 
+  'shade_colors' = c('white', '#ededed')
+  )
+```
+
+```{r}
+#| label: demographics-stats-list-overall-excl
+#| echo: false
+overall_excl_table <- get_stats_table(
+  doc_data |>
+    dplyr::filter(drop_flag), 
+  'cont_mean_cols' = cont_mean_cols, 
+  'cont_median_cols' = cont_median_cols,
+  'cat_cols' = cat_cols, 
+  'desired_col_order' = desired_col_order,
+  'key' = key, 
+  'shade_colors' = c('white', '#ededed')
   )
 ```
 
 
-<!-- # Analysis -->
+<!-- ## Step 2.2: Create a data frame that contains our grouped summary statistics -->
 
-<!-- ## Create lists of columns to analyze -->
-
-<!-- Right now, I'm thinking one table per section (e.g., demographics, etc.) -->
 
 ```{r}
-#| label: demographics-define-cont-cols
+#| label: demographics-stats-list-grouped
 #| echo: false
-demographics_cont_cols <- c("ml_age")
-```
 
-```{r}
-#| label: demographics-define-cat-cols
-#| echo: false
-demographics_cat_cols <- c("ml_gender_f", "ml_race_f", "ml_race_eth_4cat_f", "ml_hispanic_f")
-```
-
-<!-- ## Create a data frame that contains our overall summary statistics -->
-
-<!-- Later, turn these into functions? -->
-
-```{r}
-#| label: demographics-add-cont-stats-list-overall
-#| echo: false
-demographics_stats_list <- demographics_cont_cols  |> 
-  rlang::set_names(demographics_cont_cols) |> 
-  purrr::map(~ n_mean_ci(l2c_survey, !! rlang::sym(.x), 1))
-```
-
-```{r}
-#| label: demographics-add-cat-stats-list-overall
-#| echo: false
-demographics_stats_list <- c(
-  demographics_stats_list,
-  demographics_cat_cols |>
-    rlang::set_names(demographics_cat_cols) |> 
-    purrr::map(~ n_percent_ci(l2c_survey, !! rlang::sym(.x), 1))
-)
-```
-
-<!-- ## Bind together the continuous and categorical summary stats -->
-
-<!-- Later, turn this into a function? -->
-
-```{r}
-#| label: demographics-stats-list-to-df-overall
-#| echo: false
-demographics_table <- purrr::map_dfr(
-  # This is where we can set the order of the rows
-  .x = c("ml_age", "ml_gender_f", "ml_race_f", "ml_race_eth_4cat_f", "ml_hispanic_f"),
-  .f = ~ dplyr::bind_rows(demographics_stats_list[[.x]])
-)
-
-# Reorder the columns so that `cat` comes after `var`
-demographics_table <- demographics_table |> 
-  dplyr::select(var, cat, everything())
-```
-
-<!-- ## Create a data frame that contains our grouped summary statistics -->
-
-<!-- Later, turn these into functions? -->
-
-```{r}
-#| label: demographics-add-cont-stats-list-grouped
-#| echo: false
-grouped_demographics_stats_list <- demographics_cont_cols  |> 
-  rlang::set_names(demographics_cont_cols) |> 
-  purrr::map(
-    ~ l2c_survey |> 
-        filter(!is.na(group_f)) |> 
-        group_by(group_f) |> 
-        n_mean_ci_grouped(!! rlang::sym(.x), 1)
+grouped_stats_all <- get_stats_table(
+  doc_data |>
+    filter(!drop_flag), 
+  'cont_mean_cols' = cont_mean_cols, 
+  'cont_median_cols' = cont_median_cols,
+  'cat_cols' = cat_cols, 
+  'desired_col_order' = desired_col_order,
+  'key' = key, 
+  'group_var' = 'group',
+  'shade_colors' = c('white', '#ededed')
   )
-```
-
-```{r}
-#| label: demographics-add-cat-stats-list-grouped
-#| echo: false
-grouped_demographics_stats_list <- c(
-  grouped_demographics_stats_list,
-  demographics_cat_cols |>
-    rlang::set_names(demographics_cat_cols) |> 
-    purrr::map(
-      ~ l2c_survey |> 
-          filter(!is.na(group_f)) |> 
-          n_percent_ci_grouped(!! rlang::sym(.x), group_f, 1))
-)
-```
-
-<!-- ## Bind together the continuous and categorical summary stats -->
-
-<!-- Later, turn this into a function? -->
-
-```{r}
-#| label: demographics-stats-list-to-df-grouped
-#| echo: false
-grouped_demographics_table <- purrr::map_dfr(
-  # This is where we can set the order of the rows
-  .x = c("ml_age", "ml_gender_f", "ml_race_f", "ml_race_eth_4cat_f", "ml_hispanic_f"),
-  .f = ~ dplyr::bind_rows(grouped_demographics_stats_list[[.x]])
-)
-
-# Reorder the columns so that `cat` comes after `var`
-grouped_demographics_table <- grouped_demographics_table |> 
-  dplyr::select(var, cat, everything())
+  
 ```
 
 
+<!-- # Step 3: Displayed Content of Document -->
 
-<!-- Make a variable name key -->
+<!-- ## Step 3.1: Header -->
+
+This page contains tables of baseline `r params$characteristic_description` characteristics for the `r n_participants` unique Link2Care participants. First, the statistics are presented below for all participants overall. Then, there are presented by randomization arm -- Usual Care Management (UCM), Usual Care Management + Smart Phone (UCM+SM), and Link2Care (L2C).
+
+```{=html}
+<!--
+Data cleaning
+I will eventually need to move this to one of the other files. I'm just trying to get a prototype done for Michael and Jenn to review as quickly as possible.
+-->
+```
 
 ## Variable Name Key
 
@@ -233,140 +400,152 @@ The following table provides a description for each variable that appears in the
 #| label: demographics-variable-name-key
 #| echo: false
 
-key <- tribble(
- ~var, ~description,
- "ml_age", "Participant's age at baseline.",
- "ml_gender_f", "Participant's self-reported sex at baseline.",
- "ml_race_f", "Participant's self-reported race at baseline.",
- "ml_race_eth_4cat_f", "Participant's self-reported race at baseline. Collapsed into four categories.",
- "ml_hispanic_f", "Participant's self-report of Hispanic ethnicity at baseline."
-)
-
 DT::datatable(
-  key,
+  key |>
+    select(source_var, description),
   colnames = c("Variable Name", "Variable Description")
 )
 ```
 
 ## Overall Statistics
 
-<!-- Later, turn this into a function? -->
-
+The overall statistics for the demographics of all `r n_participants` participants, including all `r n_participants_incl` included and `r n_participants_excl` excluded participants, are presented below.
 
 ```{r}
-#| label: table-demographics-overall
+#| label: table-demographics-overall-all
 #| echo: false
 
-# Add a column that we can use to shade every other var name.
-demographics_table <- add_shade_column(demographics_table)
+overall_all_table$display
 
-# Create a custom table container for the foot notes
-# https://rstudio.github.io/DT/
-# custom_container <- htmltools::withTags(
-#   table(
-#    
-#   )
-# )
+```
 
-DT::datatable(
-  demographics_table,
-  colnames = c("Shade", "Variable", "Category", "N", "Statistic (95% CI)<sup>1</sup>"),
-  escape = FALSE, # So the HTML superscript in the column header will work
-  options = list(
-    pageLength = 20,
-    columnDefs = list(
-      # Center n and formatted stats
-      list(className = 'dt-center', targets = 4:5),
-      # Hide row numbers column from view
-      list(targets = 0, visible = FALSE),
-      # Hide "shade" column from view
-      list(targets = 1, visible = FALSE)
-    )
-  )
-) |> 
-  DT::formatStyle(
-    "shade",
-    target = "row",
-    backgroundColor = DT::styleEqual(c(0, 1), c('white', '#ededed'))
+```{r}
+#| label: demographics-overall-all-download-buttons
+#| echo: false
+
+dl_buttons <- download_buttons(
+  overall_all_table$table,
+  output_name = "Overall Demographics - All"
   )
 ```
 
-# 🔴 Testing out downloading
-
-Example from the [downloadthis website](https://fmmattioni.github.io/downloadthis/index.html). This works, but Excel isn't the most user-friendly format. 
-
-- See if you can get it to download a word flextable.
-- Then go back and make one table for overall and by group.
-
 ```{r}
-#| label: download_xlsx_example
+#| label: demographics-overall-all-download-xlsx
 #| echo: false
 
-demographics_table |> 
-  downloadthis::download_this(
-    output_name = "Demographics Overall",
-    output_extension = ".xlsx",
-    button_label = "Download table as xlsx",
-    button_type = "success",
-    has_icon = TRUE,
-    icon = "fa fa-save"
+dl_buttons$xlsx
+```
+
+```{r}
+#| label: demographics-overall-all-download-docx
+#| echo: false
+
+dl_buttons$docx
+```
+
+
+### Included Only
+
+The overall statistics for the demographics of the `r n_participants_incl` included participants, are presented below.
+
+```{r}
+#| label: table-demographics-overall-incl
+#| echo: false
+
+overall_incl_table$display
+```
+
+```{r}
+#| label: demographics-overall-incl-download-buttons
+#| echo: false
+
+dl_buttons <- download_buttons(
+  overall_incl_table$table,
+  output_name = "Overall Demographics - Included Subjects"
   )
 ```
 
-Turn `demographics_table` into a flextable object.
-
 ```{r}
-demographics_table_ft <- flextable::flextable(demographics_table)
-flextable::save_as_docx(demographics_table_ft, path = "demographics_overall.docx")
-```
-
-```{r}
-#| label: download_docx_example
+#| label: demographics-overall-incl-download-xlsx
 #| echo: false
-downloadthis::download_file(
-  path = "demographics_overall.docx",
-  output_name = "Demographics Overall",
-  button_label = "Download table",
-  button_type = "success",
-  has_icon = TRUE,
-  icon = "fa fa-save"
-)
+
+dl_buttons$xlsx
 ```
 
+```{r}
+#| label: demographics-overall-incl-download-docx
+#| echo: false
+
+dl_buttons$docx
+```
+
+### Excluded Only
+
+The overall statistics for the demographics of the `r n_participants_excl` included participants, are presented below.
+
+```{r}
+#| label: table-demographics-overall-excl
+#| echo: false
+
+overall_excl_table$display
+```
+
+```{r}
+#| label: demographics-overall-excl-download-buttons
+#| echo: false
+
+dl_buttons <- download_buttons(
+  overall_excl_table$table,
+  output_name = "Overall Demographics - Excluded Subjects"
+  )
+```
+
+```{r}
+#| label: demographics-overall-excl-download-xlsx
+#| echo: false
+
+dl_buttons$xlsx
+```
+
+```{r}
+#| label: demographics-overall-excl-download-docx
+#| echo: false
+
+dl_buttons$docx
+```
 
 ## Statistics By Randomization Arm
 
-<!-- Later, turn this into a function? -->
+The overall statistics for the demographics of all `r n_participants_incl` included participants, are presented below, by randomization arm.
 
 ```{r}
-#| label: table-demographics-grouped
+#| label: table-demographics-grouped-all
 #| echo: false
 
-# Add a column that we can use to shade every other var name.
-grouped_demographics_table <- add_shade_column(grouped_demographics_table)
+grouped_stats_all$display
+```
 
-DT::datatable(
-  grouped_demographics_table,
-  colnames = c("Shade", "Variable", "Category", "N UCM", "Statistic (95% CI) UCM", "N UCM+SP", "Statistic (95% CI) UCM+SP", "N L2C", "Statistic (95% CI) L2C"),
-  options = list(
-    pageLength = 20,
-    columnDefs = list(
-      # Center n and formatted stats
-      list(className = 'dt-center', targets = 4:9),
-      # Hide row numbers column from view
-      list(targets = 0, visible = FALSE),
-      # Hide "shade" column from view
-      list(targets = 1, visible = FALSE)
-    )
-  )
-) |> 
-  DT::formatStyle(
-    "shade",
-    target = "row",
-    backgroundColor = DT::styleEqual(c(0, 1), c('white', '#ededed'))
+```{r}
+#| label: demographics-grouped-all-download-buttons
+#| echo: false
+
+dl_buttons <- download_buttons(
+  grouped_stats_all$table,
+  output_name = "Overall Demographics - by Randomization Arm"
   )
 ```
 
+```{r}
+#| label: demographics-grouped-all-download-xlsx
+#| echo: false
 
+dl_buttons$xlsx
+```
 
+```{r}
+#| label: demographics-grouped-all-download-docx
+#| echo: false
+
+dl_buttons$docx
+```
 
