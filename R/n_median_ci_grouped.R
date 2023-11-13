@@ -20,8 +20,14 @@ n_median_ci_grouped <- function(.data, .col, .digits) {
       n      = sum(!is.na({{.col}})),
       n_miss = sum(is.na({{.col}})),
       median = stats::median({{.col}}, na.rm = TRUE),
-      lcl    = sort({{.col}})[stats::qbinom(.025, length({{.col}}), 0.5)],
-      ucl    = sort({{.col}})[stats::qbinom(.975, length({{.col}}), 0.5)]
+      lcl    = sort(na.omit({{.col}}))[stats::qbinom(.025, 
+                                                     length(na.omit({{.col}})),
+                                                     0.5)
+                                       ],
+      ucl    = sort(na.omit({{.col}}))[stats::qbinom(.975,
+                                                     length(na.omit({{.col}})), 
+                                                     0.5)
+                                       ]
     ) |> 
     meantables::mean_format("median (lcl - ucl)", digits = .digits) |> 
     dplyr::select(var, group_cat = 1, n, formatted_stats) |>
@@ -40,7 +46,9 @@ n_median_ci_grouped <- function(.data, .col, .digits) {
   first_second_mixed <- c(rbind(first_half, second_half))
   first_second_mixed <- first_second_mixed + 1 # account for the first column, `var`
   result             <- dplyr::select(result, 1, all_of(first_second_mixed))
-  
+  result             <- result |>
+                            dplyr::mutate(statistic = 'Median (95% CI)') |>
+                            dplyr::relocate(var, statistic)
   # Return result
   result
 }

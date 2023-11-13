@@ -1,0 +1,998 @@
+---
+title: "Extracting Discrepancy Data"
+---
+
+This document was made to extract specific subject entries with discrepancies in the data, for assessment by PIs.
+
+# Libraries
+
+```{r, warning = FALSE, message = FALSE}
+library(here)
+library(tidyverse)
+library(openxlsx)
+library(readxl, warn.conflicts = FALSE)
+library(haven)
+```
+
+# Data
+
+The combined data set is stored as `baseline_data`, and imported using the master table script.
+
+```{r}
+source(here("R/import_data.R"))
+
+# Print a message for when this file is being sourced
+cat(
+  paste0(Sys.Date(), ":"),
+  "Combined Participant Baseline Data imported with", 
+  nrow(baseline_data), "rows and", 
+  ncol(baseline_data), "columns.\n"
+)
+
+# Check the most recent file modification dates and print for user when this
+# file is being sourced.
+
+cat(
+      "Combined Participant Data last modified on OneDrive", 
+      as.character(file.info(path)$mtime), "\n"
+    )
+
+# 2023-11-03: Combined Participant Baseline Data imported with 442 rows and 
+# 1037 columns.
+# Combined Participant Data last modified on OneDrive 2023-10-27 16:06:04 
+```
+
+The remaining data was stored in the Link2Care public data folders.
+
+```{r}
+base_path <- paste0(
+    substring(
+        here::here(), 
+        1, 
+        nchar(here::here())-nchar('link2care_master_table')
+    ),
+    'link2care_public/data/'
+    )
+```
+
+
+The Bridge Session rows identified as potentially containing typos in the date field were imported as `bridge_subset`.
+
+```{r}
+bridge_path <- paste0(
+    base_path,
+    'bridge_session_data/bridge_0_questionable_cols.rds'
+  )
+
+bridge_subset <- readRDS(bridge_path)
+
+# Print a message for when this file is being sourced
+cat(
+  paste0(Sys.Date(), ":"),
+  "Isolated Bridge Data imported with", nrow(bridge_subset), 
+  "rows and", ncol(bridge_subset), "columns.\n"
+)
+
+# Check the most recent file modification dates and print for user when this
+# file is being sourced.
+
+cat(
+      "Isolated Bridge Data last modified on OneDrive", 
+      as.character(file.info(bridge_path)$mtime), "\n"
+    )
+
+# 2023-11-03: Isolated Bridge Data imported with 107 rows and 10 columns.
+# Isolated Bridge Data last modified on OneDrive 2023-10-23 09:51:36 
+```
+
+The Master Log was inported as `master_log`.
+
+```{r}
+master_log_path  <- paste0(
+  base_path,
+  'master_log/master_log.xlsx'
+  )
+
+master_log <- read_excel(
+  master_log_path, 
+  sheet = "Screened In",
+  col_names = c(
+    "id", "baseline_dt",
+    "v2_dt", 
+    "v3_dt", 
+    "v4_dt", 
+    "v5_sch", "v5_dt",
+    "group", "v2_status", "dropped_status", 
+    "name_first", "name_middle", "name_last",
+    "gender", "race", "hispanic_latino", "dob", "age", 
+    "care_manager"
+    ),
+  col_types = c(
+    "text", "skip", "date", rep("skip", 2),
+    "date", rep("skip", 4), 
+    "date", rep("skip", 4),
+    "date", rep("skip", 3),
+    "date", "date", rep("skip", 2),
+    rep("text", 3),
+    rep("text", 3),
+    rep("text", 3), "date", "text",
+    rep("skip", 5), "text",
+    rep("skip", 15)
+    ),
+  skip = 1
+) |> 
+  # Coerce group to numeric so that it can be combined with the QDS data.
+  mutate(
+    group = case_when(
+      group == "UCM"    ~ 1,
+      group == "UCM+SP" ~ 2,
+      group == "L2C"    ~ 3
+    )
+  ) |>
+  # Coerce age to a numeric
+  mutate(age = as.numeric(age)) |>
+  # Remove empty rows
+  filter(!is.na(id))
+
+# Print a message for when this file is being sourced
+cat(
+  paste0(Sys.Date(), ":"),
+  "Master log imported with", nrow(master_log), "rows and", ncol(master_log),
+  "columns.\n"
+)
+
+# Check the most recent file modification dates and print for user when this
+# file is being sourced.
+
+cat(
+      "Master log last modified on OneDrive", 
+      as.character(file.info(master_log_path)$mtime), "\n"
+    )
+
+# 2023-11-03: Master log imported with 442 rows and 19 columns.
+# Master log last modified on OneDrive 2023-09-28 11:52:59
+```
+
+The full Bridge Session data was inported as `bridge_full`.
+
+```{r}
+bridge_path <- paste0(
+  base_path,
+  "bridge_session_data/bridge_session_minutes.xlsx"
+  )
+
+bridge_full <- read_excel(
+  bridge_path,
+  sheet = "Sheet1",
+  col_names = c(
+    "subject", "bridge_baseline_date", "bridge_v2_rand_date", 
+    "bridge_v5_sched_final_visit_date", "bridge_date_session", "bridge_type", 
+    "bridge_duration", "bridge_flag_ns_v2", "bridge_flag_dropped", 
+    "bridge_notes"
+  ),
+  col_types = c(
+    "numeric", rep("date", 3), "text", rep("numeric", 4), "text"
+  ),
+  na = c("", ".", "None"),
+  skip = 10
+)
+
+# Print a message for when this file is being sourced
+cat(
+  paste0(Sys.Date(), ":"),
+  "Bridge Data imported with", nrow(bridge_full), "rows and", 
+  ncol(bridge_full),"columns.\n"
+)
+
+# Check the most recent file modification dates and print for user when this
+# file is being sourced.
+
+cat(
+      "Bridge Data last modified on OneDrive", 
+      as.character(file.info(bridge_path)$mtime), "\n"
+    )
+
+# 2023-11-03: Bridge Data imported with 4377 rows and 10 columns.
+# Bridge Data last modified on OneDrive 2023-08-25 10:43:48 
+```
+
+We also imported the variable map as `variable_map`.
+
+```{r}
+variable_map <- readRDS(paste0(
+  base_path, "Combined Participant Data/variable_map_03.rds"
+  ))
+```
+
+
+# Modifications to Facilitate Isolation with R
+
+## Bridge Data Processing
+
+We repeated some standardization cleaning performed in data_survey_01_preprocess.qmd, which served to clean the Bridge Data in a way that R could utilize the information.
+
+```{r}
+# Remove non-date entries from date column, and convert to date
+
+bridge_full <- bridge_full |>
+  mutate(
+    bridge_date_session = if_else(
+      str_detect(bridge_date_session, "[A-Z]|[a-z]"), 
+      NA_character_, bridge_date_session
+    ),
+    bridge_date_session = as.numeric(bridge_date_session),
+    bridge_date_session = as.Date(bridge_date_session, origin = "1899-12-30")
+  )
+
+# Remove content of 'notes' rows
+
+bridge_full[1, "bridge_notes"] <- NA_character_
+bridge_full[2, "bridge_notes"] <- NA_character_
+
+# Remove rows that only contained missing values
+
+bridge_full <- bridge_full |>
+  # Create missing data dummy variables
+  mutate(
+    across(
+      everything(),
+      is.na,
+      .names = "{col}_miss"
+    )
+  ) |> 
+  # Sum missing data dummy variables
+  rowwise() |> 
+  mutate(
+    n_missing = sum(c_across(ends_with("_miss")))
+  ) |> 
+  ungroup() |> 
+  # Drop missing data dummy variables
+  select(-ends_with("_miss")) |> 
+  # Drop rows that are missing in every column
+  filter(!n_missing == ncol(bridge_full)) |>
+  # Drop the count of missing variables
+  select(-n_missing)
+
+# Carry forward variables that were only listed on the first set of rows
+# for a subject
+
+bridge_full <- bridge_full |>
+  # Carry forward id
+  fill(subject) |> 
+  group_by(subject) |> 
+  # Carry forward other variables grouped by id
+  fill(
+    bridge_baseline_date, bridge_v2_rand_date, bridge_v5_sched_final_visit_date
+  ) |> 
+  ungroup()
+
+# Convert session-type ('bridge_type') into a factor
+
+bridge_full <- bridge_full |>
+    mutate(
+    # Change NA to None for type
+    bridge_type = if_else(is.na(bridge_type), 4, bridge_type),
+    # Create factor version
+    bridge_type_f = factor(
+      bridge_type,
+      1:4,
+      c("case_management", "crisis_management", "other", "none")
+    )
+  )
+
+# Warning: There was 1 warning in `mutate()`.
+# ℹ In argument: `bridge_date_session = as.numeric(bridge_date_session)`.
+# Caused by warning:
+# ! NAs introduced by coercion
+```
+
+## Flagging Discrepancies between Master Log and Subjective Versions of Demographics
+
+We calculated race based on subject answers to questions 3 and 4 of the Demographic Instrument, with equivalent categories to both master log and screening race assessments.
+
+```{r}
+baseline_data <- baseline_data |>
+  mutate(dem_04_mrace_num = case_when(
+    dem_04_mrace_white == "Yes" ~ 1,
+    dem_04_mrace_white == "No" ~ 0, 
+    is.na(dem_04_mrace_white) ~ 0
+    )
+  ) |>
+  mutate(
+    temp_race_03 = case_when(
+      dem_03_race == 'More than one race/multi-racial' ~ 1,
+      dem_03_race == 'White' ~ 2,
+      dem_03_race == 'Black or African American' ~ 3,
+      dem_03_race == 'Asian (Cambodia, China, India, Japan, Korea, Malaysia, Pakistan, Vietnam)' ~ 4,
+      #dem_03_race == 'Native Hawaiian or Other Pacific Islander (Guam, Samoa)' ~ 5,
+      dem_03_race == 'American Indian/Alaska Native' ~ 6,
+      dem_03_race == 'Other' ~ 7,
+      !is.na(dem_03_race) ~ NA
+    )
+  ) |>
+  mutate(
+    dem_04_mrace_num = ifelse(
+      !is.na(dem_04_mrace_black) & (dem_04_mrace_black == "Yes"),
+      dem_04_mrace_num + 1,
+      dem_04_mrace_num
+    )
+  ) |>
+  mutate(
+    dem_04_mrace_num = ifelse(
+      !is.na(dem_04_mrace_asian) & (dem_04_mrace_asian == "Yes"),
+      dem_04_mrace_num + 1,
+      dem_04_mrace_num
+    )
+  ) |>
+  mutate(
+    dem_04_mrace_num = ifelse(
+      !is.na(dem_04_mrace_pi) & (dem_04_mrace_pi == "Yes"),
+      dem_04_mrace_num + 1,
+      dem_04_mrace_num
+    )
+  ) |>
+  mutate(
+    dem_04_mrace_num = ifelse(
+      !is.na(dem_04_mrace_ai) & (dem_04_mrace_ai == "Yes"),
+      dem_04_mrace_num + 1,
+      dem_04_mrace_num
+    )
+  ) |>
+  mutate(
+    dem_04_mrace_num = ifelse(
+      !is.na(dem_04_mrace_other) & (dem_04_mrace_other == "Yes"),
+      dem_04_mrace_num + 1,
+      dem_04_mrace_num
+    )
+  ) |>
+  mutate(
+    calc_race = case_when(
+      dem_04_mrace_num == 0 ~ temp_race_03,
+      dem_04_mrace_num > 1 ~ 1,
+      dem_04_mrace_num < 2 & dem_04_mrace_white == "Yes" ~ 2,
+      dem_04_mrace_num < 2 & dem_04_mrace_black == "Yes" ~ 3,
+      dem_04_mrace_num < 2 & dem_04_mrace_asian == "Yes" ~ 4,
+      dem_04_mrace_num < 2 & dem_04_mrace_pi == "Yes" ~ 5,
+      dem_04_mrace_num < 2 & dem_04_mrace_ai == "Yes" ~ 6,
+      dem_04_mrace_num < 2 & dem_04_mrace_other == "Yes" ~ 7,
+      TRUE ~ NA
+    )
+  ) |>
+  mutate(
+    calc_race = factor(
+      calc_race,
+      levels = c(1, 2, 3, 4, 5, 6, 7),
+      labels = c(
+        'More than one race/multi-racial', 
+        'White', 
+        'Black or African American', 
+        paste0(
+          'Asian (Cambodia, China, India, Japan, Korea, ', 
+          'Malaysia, Pakistan, Vietnam)'
+          ), 
+        'Native Hawaiian or Other Pacific Islander (Guam, Samoa)', 
+        'American Indian / Alaska Native', 
+        'Other'
+      )
+    )
+  ) |>
+  select(-temp_race_03)
+```
+
+We recalculated our date-of-birth to visit age, using master log values for baseline date if otherwise absent from the primary data set.
+
+```{r}
+baseline_data <- baseline_data |>
+  rowwise() |>
+  mutate(
+    sq_04_subj_age_calc = if_else(
+      is.na(sq_04_subj_age_calc),
+      lubridate::interval(
+        sq_04_subj_dob_ml, 
+        as.Date(master_log[master_log$id == id,]$baseline_dt)
+        ) %/% lubridate::years(1),
+      sq_04_subj_age_calc
+      )
+  ) |>
+  ungroup()
+```
+
+We flagged any row that had a discrepancy between the subject-given value column(s) or the master log column(s) for our key demographic variables: age, race, hispanic ethnicity, and sex/gender.
+
+```{r}
+baseline_data <- baseline_data |>
+  dplyr::mutate(
+      age_diff = ifelse(sq_04_subj_age != sq_04_subj_age_ml, TRUE, FALSE),
+      race_diff = case_when(
+        sq_03_subj_race != sq_03_subj_race_ml ~ TRUE,
+        !is.na(calc_race) & (sq_03_subj_race != calc_race) ~ TRUE,
+        !is.na(calc_race) & (sq_03_subj_race_ml != calc_race) ~ TRUE,
+        TRUE ~ FALSE
+        ),
+      hispanic_diff = ifelse(
+          sq_02_subj_hispanic != sq_02_subj_hispanic_ml, 
+          TRUE, 
+          FALSE
+        ),
+      gender_diff = ifelse(sq_01_subj_gender != sq_01_subj_gender_ml, TRUE, FALSE)
+    )
+```
+
+
+# Demographic Differences (Master Log vs Subject Responses)
+
+
+## Race
+
+We isolated the subjects with discrepancies in values for race. We selected pertinent columns relating to the subject to provide additional clarity and context in review. We organized and named our columns to facilitate exporting to an EXCEL document.
+
+```{r}
+race_discrepancies <- baseline_data |>
+  filter(race_diff) |>
+  select(
+    id, group, drop_flag, dropped_status, subj_randomized_status,
+    visit_date,
+    sq_03_subj_race_ml, sq_03_subj_race, calc_race, dem_03_race,
+    dem_04_mrace_white, dem_04_mrace_black, dem_04_mrace_asian,
+    dem_04_mrace_pi, dem_04_mrace_ai, dem_04_mrace_other,
+    sq_02_subj_hispanic, sq_02_subj_hispanic_ml
+    ) |>
+  rename_at('id', ~'subj_id') |>
+  mutate(verdict = NA) |>
+  rowwise() |>
+  mutate(
+    baseline_dt = pull(master_log %>% 
+                         filter(id == subj_id) %>% 
+                         select(baseline_dt)
+                       ),
+    v2_dt = pull(master_log %>%
+                   filter(id == subj_id) %>%
+                   select(v2_dt)
+                 )
+    ) |>
+  ungroup() |>
+  rename_at('subj_id', ~ 'id') |>
+  relocate(
+    verdict, id, group, drop_flag, dropped_status, subj_randomized_status,
+    visit_date, baseline_dt, v2_dt
+    ) |>
+  rename_at(
+    c(
+      'id', 'group', 'drop_flag', 'dropped_status', 'subj_randomized_status',
+      'visit_date', 'baseline_dt', 'v2_dt',
+      'sq_03_subj_race_ml', 'sq_03_subj_race', 'calc_race', 
+      'dem_03_race', 'dem_04_mrace_white', 'dem_04_mrace_black', 
+      'dem_04_mrace_asian', 'dem_04_mrace_pi', 'dem_04_mrace_ai', 
+      'dem_04_mrace_other', 'sq_02_subj_hispanic', 'sq_02_subj_hispanic_ml',
+      'verdict'
+      ),
+    ~c(
+      'Subject ID', 'Randomization Arm', 'Marked for Exclusion?',
+      'Notes on Drop Status (Master Log)', 
+      'Notes on Randomization (Master Log)',
+      'Baseline Visit Date (1) (QDS)', 
+      'Baseline Visit Date (1) (Master Log)',
+      'Randomization Visit (2) Date (Master Log)',
+      'Master Log Race', 
+      'Screening Q3 Race (QDS)', 
+      'Calculated Race from Demographic Q3 and Q4', 
+      'Demographic Q3 Race (QDS)',
+      'Demographic Q4 Multirace Cat - White (QDS)',
+      'Demographic Q4 Multirace Cat - Black (QDS)',
+      'Demographic Q4 Multirace Cat - Asian (QDS)',
+      'Demographic Q4 Multirace Cat - Pacific Islander (QDS)',
+      'Demographic Q4 Multirace Cat - Native American (QDS)',
+      'Demographic Q4 Multirace Cat - Other (QDS)',
+      'Master Log Hispanic Origin', "Screening Q2 Hispanic Origin (QDS)",
+      'Verdict'
+    )
+  )
+
+```
+
+## Hispanic Ethnicity
+
+We isolated the subjects with discrepancies in values for Hispanic Ethnicity. We selected pertinent columns relating to the subject to provide additional clarity and context in review. We organized and named our columns to facilitate exporting to an EXCEL document.
+
+```{r}
+hispanic_discrepancies <- baseline_data |>
+  filter(hispanic_diff) |>
+  select(
+    id, group, drop_flag, dropped_status, subj_randomized_status,
+    visit_date,
+    sq_02_subj_hispanic, sq_02_subj_hispanic_ml,
+    sq_03_subj_race_ml, sq_03_subj_race, calc_race, dem_03_race,
+    dem_04_mrace_white, dem_04_mrace_black, dem_04_mrace_asian,
+    dem_04_mrace_pi, dem_04_mrace_ai, dem_04_mrace_other,
+    ) |>
+  rename_at('id', ~'subj_id') |>
+  mutate(verdict = NA) |>
+  rowwise() |>
+  mutate(
+    baseline_dt = pull(master_log %>% 
+                         filter(id == subj_id) %>% 
+                         select(baseline_dt)
+                       ),
+    v2_dt = pull(master_log %>%
+                   filter(id == subj_id) %>%
+                   select(v2_dt)
+                 )
+    ) |>
+  ungroup() |>
+  rename_at('subj_id', ~ 'id') |>
+  relocate(
+    verdict, id, group, drop_flag, dropped_status, subj_randomized_status,
+    visit_date, baseline_dt, v2_dt
+    ) |>
+  rename_at(
+    c(
+      'id', 'group', 'drop_flag', 'dropped_status', 'subj_randomized_status',
+      'visit_date', 'baseline_dt', 'v2_dt',
+      'sq_03_subj_race_ml', 'sq_03_subj_race', 'calc_race', 
+      'dem_03_race', 'dem_04_mrace_white', 'dem_04_mrace_black', 
+      'dem_04_mrace_asian', 'dem_04_mrace_pi', 'dem_04_mrace_ai', 
+      'dem_04_mrace_other', 'sq_02_subj_hispanic', 'sq_02_subj_hispanic_ml',
+      'verdict'
+      ),
+    ~c(
+      'Subject ID', 'Randomization Arm', 'Marked for Exclusion?',
+      'Notes on Drop Status (Master Log)', 
+      'Notes on Randomization (Master Log)',
+      'Baseline Visit (1) Date (QDS)', 
+      'Baseline Visit (1) Date (Master Log)',
+      'Randomization Visit (2) Date (Master Log)',
+      'Master Log Race', 
+      'Screening Q3 Race (QDS)', 
+      'Calculated Race from Demographic Q3 and Q4', 
+      'Demographic Q3 Race (QDS)',
+      'Demographic Q4 Multirace Cat - White (QDS)',
+      'Demographic Q4 Multirace Cat - Black (QDS)',
+      'Demographic Q4 Multirace Cat - Asian (QDS)',
+      'Demographic Q4 Multirace Cat - Pacific Islander (QDS)',
+      'Demographic Q4 Multirace Cat - Native American (QDS)',
+      'Demographic Q4 Multirace Cat - Other (QDS)',
+      'Master Log Hispanic Origin', "Screening Q2 Hispanic Origin (QDS)",
+      'Verdict'
+    )
+  )
+
+```
+
+
+
+## Age
+
+We isolated the subjects with discrepancies in values for Age. We selected pertinent columns relating to the subject to provide additional clarity and context in review. We organized and named our columns to facilitate exporting to an EXCEL document.
+
+```{r}
+age_discrepancies <- baseline_data |>
+  filter(age_diff) |>
+  select(
+    id, group, drop_flag, dropped_status, subj_randomized_status,
+    visit_date,
+    sq_04_subj_dob_ml, sq_04_subj_age_calc, sq_04_subj_age_ml, sq_04_subj_age
+    ) |>
+  rename_at('id', ~'subj_id') |>
+  mutate(verdict = NA) |>
+  rowwise() |>
+  mutate(
+    baseline_dt = pull(master_log %>% 
+                         filter(id == subj_id) %>% 
+                         select(baseline_dt)
+                       ),
+    v2_dt = pull(master_log %>%
+                   filter(id == subj_id) %>%
+                   select(v2_dt)
+                 )
+    ) |>
+  ungroup() |>
+  rename_at('subj_id', ~ 'id') |>
+  relocate(
+    verdict, id, group, drop_flag, dropped_status, subj_randomized_status,
+    visit_date, baseline_dt, v2_dt
+    ) |>
+  mutate(
+    diff_subj_ml = sq_04_subj_age - sq_04_subj_age_ml,
+    diff_subj_calc = sq_04_subj_age - sq_04_subj_age_calc,
+    diff_ml_calc = sq_04_subj_age_ml - sq_04_subj_age_calc
+    ) |>
+  rename_at(
+    c(
+      'id', 'group', 'drop_flag', 'dropped_status', 'subj_randomized_status',
+      'visit_date', 'baseline_dt', 'v2_dt', 'sq_04_subj_dob_ml',
+      'sq_04_subj_age_calc', 'sq_04_subj_age_ml', 'sq_04_subj_age',
+      'diff_subj_ml', 'diff_subj_calc', 'diff_ml_calc',
+      'verdict'
+      ),
+    ~c(
+      'Subject ID', 'Randomization Arm', 'Marked for Exclusion?',
+      'Notes on Drop Status (Master Log)', 
+      'Notes on Randomization (Master Log)',
+      'Baseline Visit (1) Date (QDS)', 
+      'Baseline Visit (1) Date (Master Log)',
+      'Randomization Visit (2) Date (Master Log)',
+      'Master Log Date of Birth',
+      'Calculated Age (QDS V1 date - Master Log DOB)',
+      'Master Log Age', 'Screening Q4 Age (QDS)',
+      'Screening Age (QDS) - Master Log Age',
+      'Screening Age (QDS) - Calculated Age',
+      'Master Log Age - Calculated Age',
+      'Verdict'
+    )
+  )
+```
+
+
+# Bridge Session Differences
+
+We isolated the subjects with potential date errors in the Bridge Session Minutes, by extracting all Bridge data relating to that subject. We selected pertinent columns relating to the subject to provide additional clarity and context in review. We organized and named our columns to facilitate exporting to an EXCEL document.
+
+```{r}
+bridge_discrepancies <- bridge_subset |>
+  mutate(
+    flag_visit = FALSE,
+    group = 
+      baseline_data[baseline_data$id == unique(bridge_subset$subject)[1],
+                    ]$group,
+    drop_flag = 
+      baseline_data[baseline_data$id == unique(bridge_subset$subject)[1],
+                    ]$drop_flag,
+    dropped_status = 
+      baseline_data[baseline_data$id == unique(bridge_subset$subject)[1],
+                    ]$dropped_status,
+    subj_randomized_status = 
+      baseline_data[baseline_data$id == unique(bridge_subset$subject)[1],
+                    ]$subj_randomized_status,
+    qds_v1 = 
+      baseline_data[baseline_data$id == unique(bridge_subset$subject)[1],
+                    ]$visit_date,
+    ml_v1_dt = 
+      master_log[master_log$id == unique(bridge_subset$subject)[1],
+                 ]$baseline_dt,
+    ml_v2_dt = 
+      master_log[master_log$id == unique(bridge_subset$subject)[1],
+                 ]$v2_dt,
+    ml_v5_sch = 
+      master_log[master_log$id == unique(bridge_subset$subject)[1],
+                 ]$v5_sch,
+    ml_v5_dt = 
+      master_log[master_log$id == unique(bridge_subset$subject)[1],
+                 ]$v5_dt,
+  ) |>
+  filter(is.na(subject)) 
+
+for (target_subject in unique(bridge_subset$subject)){
+  subject_dates <- pull(
+    bridge_subset |>
+      filter(subject == target_subject) |>
+      select(bridge_date_session)
+  )
+  
+  target_rows <- bridge_full |>
+    filter(subject == target_subject) |>
+    select(
+      subject, bridge_date_session, bridge_baseline_date, 
+      bridge_v5_sched_final_visit_date, bridge_flag_dropped, 
+      bridge_type, bridge_duration, bridge_v2_rand_date, 
+      bridge_flag_ns_v2, bridge_notes
+      ) |>
+    mutate(
+      flag_visit = (bridge_date_session %in% subject_dates),
+      group = baseline_data[baseline_data$id == target_subject,]$group,
+      drop_flag = baseline_data[baseline_data$id == target_subject,]$drop_flag,
+      dropped_status = baseline_data[baseline_data$id == target_subject,]$dropped_status,
+      subj_randomized_status = baseline_data[baseline_data$id == target_subject,]$subj_randomized_status,
+      qds_v1 = baseline_data[baseline_data$id == target_subject,]$visit_date,
+      ml_v1_dt = master_log[master_log$id == target_subject,]$baseline_dt,
+      ml_v2_dt = master_log[master_log$id == target_subject,]$v2_dt,
+      ml_v5_sch = master_log[master_log$id == target_subject,]$v5_sch,
+      ml_v5_dt = master_log[master_log$id == target_subject,]$v5_dt,
+    )
+  
+  bridge_discrepancies <- bind_rows(bridge_discrepancies,target_rows)
+}
+
+bridge_discrepancies <- bridge_discrepancies |>
+  mutate(
+    verdict = ifelse(!flag_visit, "(N/A)", NA)
+  ) |>
+  relocate(
+    verdict, subject, group, drop_flag, dropped_status, subj_randomized_status,
+    bridge_flag_dropped,
+    qds_v1, ml_v1_dt, bridge_baseline_date,
+    ml_v2_dt, bridge_v2_rand_date, bridge_flag_ns_v2,
+    ml_v5_sch, ml_v5_dt, bridge_v5_sched_final_visit_date,
+    flag_visit, bridge_date_session, bridge_type, bridge_duration,
+    bridge_notes
+  ) |>
+  rename_at(
+    c(
+      'verdict', 'subject', 'group', 'drop_flag', 'dropped_status', 
+      'subj_randomized_status',
+      'qds_v1', 'ml_v1_dt', 'ml_v2_dt', 'ml_v5_dt', 'ml_v5_sch',
+      'bridge_baseline_date', 'bridge_v2_rand_date', 'bridge_flag_ns_v2',
+      'bridge_v5_sched_final_visit_date', 'bridge_date_session', 'bridge_type',
+      'bridge_duration', 'bridge_notes', 'bridge_flag_dropped',
+      'flag_visit'
+      ),
+    ~c(
+      'Verdict', 
+      'Subject ID', 'Randomization Arm', 'Marked for Exclusion?',
+      'Notes on Drop Status (Master Log)', 
+      'Notes on Randomization (Master Log)',
+      'Baseline Visit (1) Date (QDS)', 
+      'Baseline Visit (1) Date (Master Log)',
+      'Randomization Visit (2) Date (Master Log)',
+      'Visit 5 Date (Master Log)', 'Visit 5 Scheduled Date (Master Log)',
+      
+      'Baseline Visit (1) Date (Bridge)', 
+      'Randomization Visit (2) Date (Bridge)',
+      'No Show for V2 Flag (Bridge)', 'Visit 5 Date (Bridge)',
+      'Bridge Session Date', 'Bridge Session Type', 'Bridge Session Duration',
+      'Bridge Visit Notes', 'Marked as Dropped in Bridge',
+      'Visit Out of Range (V1-V5) Flag'
+    )
+  )
+```
+
+# Examination of Excluded Subjects
+
+We isolated data regarding the exclusion of subjects, and calculated the reason for their exclusion.
+
+```{r}
+exclusion_data <- left_join(baseline_data |>
+    select(
+      id, group, visit, drop_flag, dropped_status, subj_randomized_status
+      ),
+    master_log |>
+      dplyr::select(
+        id, baseline_dt, v2_dt, v3_dt, v4_dt, v5_dt
+      ) |>
+      dplyr::mutate(
+        v2 = dplyr::if_else(is.na(v2_dt), "V2", NA),
+        v3 = dplyr::if_else(is.na(v3_dt), "V3", NA),
+        v4 = dplyr::if_else(is.na(v4_dt), "V4", NA),
+        v5 = dplyr::if_else(is.na(v5_dt), "V5", NA)
+      ) |>
+      dplyr::mutate(missing_visits = NA_character_) |>
+      tidyr::unite(
+        "missing_visits", c(v2, v3, v4, v5), 
+        sep = ", ", remove = FALSE, na.rm = TRUE
+      ) |>
+      dplyr::mutate(missing_visits = dplyr::if_else(
+        missing_visits == "", 
+        NA_character_, 
+        missing_visits
+        )
+      ) |>
+      dplyr::select(-c(v2, v3, v4, v5)),
+    by = 'id'
+    ) |>
+  filter(drop_flag) |>
+  relocate(missing_visits) |>
+  mutate(drop_reason = case_when(
+    (missing_visits == 'V2, V3, V4, V5') ~ "No Show After V1",
+    (subj_randomized_status == "Do Not Include") ~ 
+      "Marked 'Do Not Include' in Master Log",
+    (dropped_status == 'After Randomization') ~ "Marked as Dropped after Randomization in Master Log",
+    TRUE ~ NA
+    )
+  )
+  
+  
+```
+
+We then isolated the frequency of each reason for exclusion, and isolated exclusion notes for the 6 subjects that were excluded after randomization.
+
+```{r}
+excl_frequency <- exclusion_data |>
+  group_by(drop_reason)|>
+  summarise(n = n())|>
+  mutate(perc = paste0(as.character(round(n*100 / sum(n), digits = 2)), "%")) |>
+  rename_at(
+    c('drop_reason', 'n', 'perc'),
+    ~c("Reason for Exclusion", "Count", "Percentage of Exclusions")
+  )
+
+marked_excls <- exclusion_data |>
+  filter(drop_reason != "No Show After V1") |>
+  select(id, group, missing_visits, dropped_status, subj_randomized_status) |>
+  rename_at(
+    c(
+      'id', 'group', 'missing_visits', 
+      'dropped_status', 
+      'subj_randomized_status'
+      ),
+    ~c(
+      'Subject ID', 'Randomization Arm', 'No-Show Visits',
+      'Notes on Drop Status (Master Log)', 
+      'Notes on Randomization (Master Log)'
+    )
+  )
+```
+
+# Missing Counts and Frequency in the Data, by Visit
+
+A convenience function was written to facilitate rapid extraction of the missing patterns.
+
+```{r}
+extract_visit_patterns <- function(
+    pattern_tibble, visit_label, visit_prefix
+    ){
+  
+  source_vars <- pull(
+    variable_map |>
+      filter(str_detect(source, visit_prefix)) |>
+      filter(!is.na(final_variable)) |>
+      select(final_variable)
+    )
+  
+  source_subset <- full_data |>
+    filter(visit == visit_label) |>
+    select(all_of(source_vars))
+  
+  
+  visit_tib <- tibble::tibble(
+      "var" = source_vars
+      ) |>
+      rowwise() |>
+      mutate(
+        n_missing = sum(is.na(source_subset[[var]])),
+        per_missing = paste0(
+          as.character(
+            round(
+              sum(is.na(source_subset[[var]])) * 100 / nrow(source_subset), 
+              digits = 2
+              )
+            ), 
+          "%"
+        )
+      ) |>
+    rename_at(
+      c("var", "n_missing", "per_missing"),
+      ~c("Variable Name", paste(visit_prefix, "Missing (Count)"),
+         paste(visit_prefix, "Missing (Percent, in Visit)")
+      )
+    )
+  
+    if (nrow(pattern_tibble) > 0){
+      output_tib <- full_join(pattern_tibble, 
+                              visit_tib, 
+                              by = "Variable Name")
+    }
+  
+    if (nrow(pattern_tibble) == 0){
+      output_tib <- visit_tib
+    }
+  
+  output_tib
+}
+```
+
+We extracted the missing count and frequency for Variables in Each Visit into a single subset. 
+
+```{r}
+visit_list = list(
+  'V1' = 'Visit 1: Baseline',
+  'V2' = 'Visit 2: Randomization',
+  'V3' = 'Visit 3: 1 Month Follow-Up',
+  'V4' = 'Visit 4: 3 Month Follow-Up',
+  'V5' = 'Visit 5: 6 Month Follow-Up'
+  )
+
+pattern_tib <- tibble::tibble(
+  !! c("Variable Name"), 
+  .rows = 0,
+  .name_repair = ~c("Variable Name")
+  )
+for(visit_prefix in names(visit_list)){
+  visit_label <- visit_list[[visit_prefix]]
+  pattern_tib <- extract_visit_patterns(
+                   pattern_tib, visit_label, visit_prefix
+                )
+}
+
+pattern_tib <- pattern_tib |>
+  arrange(match(
+    `Variable Name`, 
+    pull(
+         variable_map |> 
+           filter(!is.na(final_variable)) |> 
+                    select(final_variable)
+         )
+    ))
+```
+
+We used our variable map to extract the source data sets and list of visits/sources for each variable.
+
+```{r}
+vm_subset <- variable_map |>
+  select(
+    final_variable, qds_v1, qds_v2, qds_v3, qds_v4, qds_v5, redcap,
+    master_log, tlfb, ddt, arrest, bridge
+  ) |>
+  mutate(across(
+    c(qds_v1, qds_v2, qds_v3, qds_v4, qds_v5, redcap,
+    master_log, tlfb, ddt, arrest, bridge), 
+    is.na
+    )) |>
+  mutate(across(everything(), as.character)) |>
+  filter(!is.na(final_variable))
+
+vm_subset <- as_tibble(cbind(nms = names(vm_subset), t(vm_subset)))
+colnames(vm_subset) <- vm_subset[1,]
+colnames(vm_subset)[1] <- 'source'
+vm_subset <- vm_subset[-1,] |>
+  mutate(across(
+    all_of(colnames(vm_subset[-1,])), 
+    ~if_else(.x == "TRUE", source, NA_character_)
+    ))
+vm_subset <- vm_subset |>
+    dplyr::mutate(across(
+    all_of(colnames(vm_subset[-1,])), 
+    ~toString(pull(na.omit(vm_subset[,cur_column()])))
+    )) |>
+    dplyr::distinct()
+
+vm_subset <- as_tibble(cbind(
+  final_variable = names(vm_subset), 
+  t(vm_subset)
+  ))[-1,] |>
+  rename_at('V2', ~ 'source_list') |>
+  mutate(source_list = if_else (source_list == "", NA, source_list))
+
+vm_subset <- left_join(vm_subset,
+          variable_map |>
+            filter(final_variable %in% vm_subset$final_variable) |>
+            select(final_variable, source),
+          by = 'final_variable')
+
+```
+
+We merged this with our pattern tibble.
+
+```{r}
+pattern_tib <- left_join(
+  pattern_tib, vm_subset, 
+  join_by(`Variable Name` == final_variable)
+  ) |>
+  rename_at(
+    c('source_list', 'source'), 
+    ~c('List of Source Data Sets', 'Visits')
+    ) |>
+  relocate('Variable Name', 'Visits')
+
+```
+
+
+# Export Data
+
+We exported our results to EXCEL format
+
+```{r}
+dataset_names <- list(
+  'Exclusion Frequencies' = excl_frequency |>
+    mutate(across(everything(), as.character)),
+  'Post-Randomization Exclusions' = marked_excls |>
+    mutate(across(everything(), as.character)),
+  'Missing Patterns' = pattern_tib |>
+    mutate(across(everything(), as.character)),
+  'Race Discrepancies' = race_discrepancies |>
+    mutate(across(everything(), as.character)),
+  'Hispanic Origin Discrepancies' = hispanic_discrepancies |>
+    mutate(across(everything(), as.character)),
+  'Age Discrepancies' = age_discrepancies |>
+    mutate(across(everything(), as.character)),
+  'Bridge Session Discrepancies' = bridge_discrepancies |>
+    mutate(across(everything(), as.character)),
+  )
+
+write.xlsx(dataset_names,
+           file = paste0(
+             base_path,
+             "Combined Participant Data/Isolated for Review/",
+             "L2C Discrepancy Data.xlsx"
+             )
+           )
+```
+
