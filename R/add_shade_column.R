@@ -24,3 +24,20 @@ add_shade_column <- function(.data, .shade_group = var) {
 # For testing
 # mtcars |>
 #   add_shade_column(.shade_group = cyl)
+
+
+#The above code orders the variables alphabetically and disregards the specified order in the table when shading.I (Ebie) suggest the following code instead:
+
+# add_shade_column <- function(.data, .shade_group = var) {
+#   .data |> 
+#     mutate(
+#       var = factor({{.shade_group}}, levels = unique({{.shade_group}}))
+#     ) |>
+#     group_by(var) |>
+#     mutate(
+#       shade = cur_group_id() %% 2 == 0
+#     ) |> 
+#     # Always make shade the first column so that it is easy to hide by position later
+#     select(shade, everything()) |> 
+#     ungroup()
+# }
